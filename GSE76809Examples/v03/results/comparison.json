@@ -1,0 +1,143 @@
+{
+  "quantum_v03": {
+    "model": "Dressed Quantum Circuit + Amplitude Encoding (6 qubits, 4 layers)",
+    "accuracy": 0.963,
+    "f1_score": 0.9787,
+    "f1_healthy": 0.8571,
+    "auc_roc": 0.913,
+    "train_time_seconds": 1259.4,
+    "parameters": 4361,
+    "threshold": 0.5759,
+    "epochs_run": 31
+  },
+  "classical_v03": {
+    "model": "Residual MLP + Mixup + Threshold Opt (64\u2192256\u2192128\u219264\u219232\u21921)",
+    "accuracy": 0.9444,
+    "f1_score": 0.967,
+    "f1_healthy": 0.8235,
+    "auc_roc": 0.9511,
+    "train_time_seconds": 0.8,
+    "parameters": 120737,
+    "threshold": 0.3496,
+    "epochs_run": 18
+  },
+  "ensemble_v03": {
+    "model": "Ensemble v03 (Weighted Avg (q=0.10))",
+    "accuracy": 0.9444,
+    "f1_score": 0.967,
+    "f1_healthy": 0.8235,
+    "auc_roc": 0.9565,
+    "method": "Weighted Avg (q=0.10)",
+    "quantum_weight": 0.1,
+    "stacker_coefs": [
+      4.608,
+      3.447
+    ]
+  },
+  "cross_validation": {
+    "quantum": {
+      "accuracy": {
+        "mean": 0.9863,
+        "std": 0.0103
+      },
+      "f1_score": {
+        "mean": 0.9863,
+        "std": 0.0103
+      },
+      "f1_healthy": {
+        "mean": 0.9863,
+        "std": 0.0103
+      },
+      "auc_roc": {
+        "mean": 0.9975,
+        "std": 0.0024
+      },
+      "folds": [
+        {
+          "accuracy": 0.9836,
+          "f1_score": 0.9836,
+          "f1_healthy": 0.9836,
+          "auc_roc": 0.9981
+        },
+        {
+          "accuracy": 0.9752,
+          "f1_score": 0.9752,
+          "f1_healthy": 0.9752,
+          "auc_roc": 0.9943
+        },
+        {
+          "accuracy": 1.0,
+          "f1_score": 1.0,
+          "f1_healthy": 1.0,
+          "auc_roc": 1.0
+        }
+      ]
+    },
+    "classical": {
+      "accuracy": {
+        "mean": 0.978,
+        "std": 0.0103
+      },
+      "f1_score": {
+        "mean": 0.9781,
+        "std": 0.0102
+      },
+      "f1_healthy": {
+        "mean": 0.978,
+        "std": 0.0104
+      },
+      "auc_roc": {
+        "mean": 0.9909,
+        "std": 0.0083
+      },
+      "folds": [
+        {
+          "accuracy": 0.9754,
+          "f1_score": 0.9752,
+          "f1_healthy": 0.9756,
+          "auc_roc": 0.9933
+        },
+        {
+          "accuracy": 0.9669,
+          "f1_score": 0.9672,
+          "f1_healthy": 0.9667,
+          "auc_roc": 0.9798
+        },
+        {
+          "accuracy": 0.9917,
+          "f1_score": 0.9917,
+          "f1_healthy": 0.9917,
+          "auc_roc": 0.9997
+        }
+      ]
+    }
+  },
+  "v01_baseline": {
+    "quantum": {
+      "accuracy": 0.8333,
+      "f1_score": 0.9072,
+      "auc_roc": 0.5707,
+      "train_time_seconds": 355.1
+    },
+    "classical": {
+      "accuracy": 0.8519,
+      "f1_score": 0.9167,
+      "auc_roc": 0.837,
+      "train_time_seconds": 1.2
+    }
+  },
+  "v02_baseline": {
+    "quantum": {
+      "accuracy": 0.8704,
+      "f1_score": 0.9213,
+      "auc_roc": 0.8804,
+      "train_time_seconds": 638.3
+    },
+    "classical": {
+      "accuracy": 0.7778,
+      "f1_score": 0.8571,
+      "auc_roc": 0.9402,
+      "train_time_seconds": 1.5
+    }
+  }
+}
