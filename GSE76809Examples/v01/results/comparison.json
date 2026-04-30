@@ -1,0 +1,26 @@
+{
+  "quantum": {
+    "model": "Quantum (PennyLane VQC)",
+    "accuracy": 0.8333333333333334,
+    "f1_score": 0.9072164948453608,
+    "auc_roc": 0.5706521739130435,
+    "train_time_seconds": 355.11766147613525,
+    "n_qubits": 8,
+    "n_layers": 3,
+    "epochs": 30
+  },
+  "classical": {
+    "model": "Classical (PyTorch MLP)",
+    "accuracy": 0.8518518518518519,
+    "f1_score": 0.9166666666666666,
+    "auc_roc": 0.8369565217391304,
+    "train_time_seconds": 1.2143464088439941,
+    "hidden_sizes": [
+      128,
+      64,
+      32
+    ],
+    "n_params": 17345,
+    "epochs": 50
+  }
+}
