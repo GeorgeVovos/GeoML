@@ -177,3 +177,40 @@ python model_quantum_kernel.py
 python model_classical_mlp.py
 python model_classical_xgb.py
 ```
+
+---
+
+## Applying These Improvements to v01–v04
+
+v01–v04 are **historical snapshots** of the project's evolution. Each one
+references the previous version's flaws in its README, and each `results/`
+folder contains JSON pinned to the code that produced it. Editing those
+versions in place would break that narrative and invalidate the saved metrics.
+
+If you want to roll the v05 improvements (no SMOTE, ANOVA F-test, scaled MLP,
+smaller VQC, stricter variance filter) back into the older examples, here are
+the options to consider:
+
+**Option A — Create v06, v07, …** mirroring each older version with v05's
+improvements applied. Cleanest, preserves history.
+
+**Option B — Apply a subset of changes in place** (e.g. only the "no SMOTE"
+change in v04, only the "smaller MLP" change in v03). Less destructive but
+still rewrites history.
+
+**Option C — Add a single "improvements applied" patch to all four older
+versions**: same changes everywhere (no SMOTE, ANOVA, scaled MLP, smaller VQC),
+and re-run them all. Roughly 4 × 60 min = **4 hours of compute**.
+
+**Option D — Just update v04** since it is the most direct comparison to v05
+(~65 min of compute).
+
+### Which specific improvements?
+
+1. Drop SMOTE entirely (use class weighting)
+2. ANOVA F-test instead of mutual information
+3. Smaller MLP (parameters proportional to input size)
+4. Smaller VQC / fewer qubits
+5. Stricter variance filter (top 50% vs top 75% of genes)
+
+Pick a combination (e.g. "Option A with improvements 1+3") to proceed.
