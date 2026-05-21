@@ -122,25 +122,29 @@ def train_quantum_kernel(fold_data, C=10.0):
     print(f"    Computing test kernel ({len(X_val_pca)}×{len(X_train_pca)})...")
     K_val = compute_kernel_matrix(X_val_pca, X_train_pca, circuit)
 
-    # Train SVM with precomputed kernel
+    # Train SVM with precomputed kernel.
+    # probability=False because Platt scaling on a precomputed kernel runs an
+    # internal 5-fold CV that is slow and produces probabilities that are not
+    # monotonic with the SVM decision function — AUC is computed from
+    # decision_function scores instead, which gives the correct ranking.
     svm = SVC(
         kernel='precomputed',
         C=C,
         class_weight='balanced',
-        probability=True,
+        probability=False,
         random_state=2026,
     )
     svm.fit(K_train, y_train)
 
-    # Predict
-    val_probs = svm.predict_proba(K_val)[:, 1]
+    # Score for AUC; sign for class label
+    val_scores = svm.decision_function(K_val)
     val_preds = svm.predict(K_val)
 
     try:
-        auc = roc_auc_score(y_val, val_probs)
+        auc = roc_auc_score(y_val, val_scores)
     except ValueError:
         auc = 0.5
-    
+
     acc = accuracy_score(y_val, val_preds)
     f1 = f1_score(y_val, val_preds, zero_division=0)
 
@@ -150,7 +154,7 @@ def train_quantum_kernel(fold_data, C=10.0):
         "auc_roc": auc,
         "accuracy": acc,
         "f1_score": f1,
-        "predictions": val_probs,
+        "predictions": val_scores,
         "pred_binary": val_preds,
         "y_true": y_val,
     }

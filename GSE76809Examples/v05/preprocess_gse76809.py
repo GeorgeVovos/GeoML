@@ -56,6 +56,44 @@ def assign_labels(meta: pd.DataFrame) -> pd.DataFrame:
     return meta
 
 
+def build_fold_features(X_train_raw, y_train, X_val_raw, n_features=16,
+                        n_pca=6, random_state=2024):
+    """Fit ANOVA selection + StandardScaler + PCA on the fold's training rows ONLY.
+
+    All feature-engineering steps that use the labels or per-feature statistics
+    are refit inside each fold to prevent validation-row leakage. Returns the
+    full fold dict expected by the v05 models.
+    """
+    # ANOVA F-test on training rows of this fold only
+    f_scores, _ = f_classif(X_train_raw, y_train)
+    f_scores = np.nan_to_num(f_scores, nan=0.0)
+    top_idx = np.argsort(f_scores)[-n_features:]
+
+    X_tr_sel = X_train_raw[:, top_idx]
+    X_va_sel = X_val_raw[:, top_idx]
+
+    scaler = StandardScaler()
+    X_tr = scaler.fit_transform(X_tr_sel)
+    X_va = scaler.transform(X_va_sel)
+
+    pca = PCA(n_components=n_pca, random_state=random_state)
+    X_tr_pca = pca.fit_transform(X_tr)
+    X_va_pca = pca.transform(X_va)
+    pca_scaler = MinMaxScaler(feature_range=(0, np.pi))
+    X_tr_pca = pca_scaler.fit_transform(X_tr_pca)
+    X_va_pca = pca_scaler.transform(X_va_pca)
+
+    X_tr_norm = X_tr / (np.linalg.norm(X_tr, axis=1, keepdims=True) + 1e-10)
+    X_va_norm = X_va / (np.linalg.norm(X_va, axis=1, keepdims=True) + 1e-10)
+
+    return {
+        "X_train": X_tr, "X_val": X_va,
+        "X_train_norm": X_tr_norm, "X_val_norm": X_va_norm,
+        "X_train_pca": X_tr_pca, "X_val_pca": X_va_pca,
+        "y_train": y_train, "y_val": None,  # caller sets y_val
+    }
+
+
 def preprocess(
     n_features: int = 16,
     platform: str = "GPL6480",
@@ -154,21 +192,22 @@ def preprocess(
     X_train_norm = X_train_scaled / (np.linalg.norm(X_train_scaled, axis=1, keepdims=True) + 1e-10)
     X_test_norm = X_test_scaled / (np.linalg.norm(X_test_scaled, axis=1, keepdims=True) + 1e-10)
 
-    # 5-fold CV splits (no SMOTE -> single fold list shared by all models)
-    print(f"\nGenerating {n_folds}-fold CV splits (no SMOTE)...")
+    # 5-fold CV splits (folds use per-fold ANOVA/scaling/PCA — no leakage)
+    print(f"\nGenerating {n_folds}-fold CV splits (per-fold feature engineering)...")
+    X_train_raw_all = X_train_df.values  # variance-filtered, unselected, unscaled
     skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=random_state)
     folds = []
-    for fold_idx, (train_idx, val_idx) in enumerate(skf.split(X_train_scaled, y_train)):
-        folds.append({
-            "X_train": X_train_scaled[train_idx],
-            "X_val": X_train_scaled[val_idx],
-            "X_train_norm": X_train_norm[train_idx],
-            "X_val_norm": X_train_norm[val_idx],
-            "X_train_pca": X_train_pca[train_idx],
-            "X_val_pca": X_train_pca[val_idx],
-            "y_train": y_train[train_idx],
-            "y_val": y_train[val_idx],
-        })
+    for fold_idx, (train_idx, val_idx) in enumerate(skf.split(X_train_raw_all, y_train)):
+        fold = build_fold_features(
+            X_train_raw_all[train_idx],
+            y_train[train_idx],
+            X_train_raw_all[val_idx],
+            n_features=n_features,
+            n_pca=n_pca,
+            random_state=random_state,
+        )
+        fold["y_val"] = y_train[val_idx]
+        folds.append(fold)
         print(f"  Fold {fold_idx+1}: train={len(train_idx)}, val={len(val_idx)}")
 
     # Same fold list serves the 'pre_smote' role for API compatibility with v04 patterns
@@ -202,6 +241,12 @@ def preprocess(
         "folds": folds,
         "folds_pre_smote": folds_pre_smote,
         "n_features": n_features,
+        "n_pca": n_pca,
+        "random_state": random_state,
+        # Raw (variance-filtered + QT) matrices for per-subsample refitting in
+        # learning curves. These do NOT include ANOVA selection / scaling / PCA.
+        "X_train_raw": X_train_df.values,
+        "X_test_raw": X_test_df.values,
     }
 
 

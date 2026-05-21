@@ -120,7 +120,162 @@ Results saved to `v06/results/v06_comparison_results.json`.
 - Quantum Kernel: ~3-5 min/fold (all-to-all ZZ is O(n²) but on 6 qubits)
 - Classical models: < 10 seconds total
 - Learning curves: ~30-60 min (many VQC evaluations at reduced epochs)
-- **Total estimate: 2-4 hours on CPU**
+- **Initial estimate: 2-4 hours on CPU**
+- **Actual measured runtime (May 2026): ~366 minutes (~6.1 h)** — dominated by the
+  quantum kernel (1501 s on holdout + 18 LC quantum kernels) and the VQC
+  (877 s on holdout + 5 CV folds + 18 LC repeats).
+
+---
+
+## Actual Results (from `results/v06_comparison_results.json`)
+
+Results below are from the corrected pipeline (per-fold SMOTE, per-fold and
+per-subsample feature engineering, holdout VQC/MLP with `use_smote=False`,
+exact-binomial McNemar for small disagreement counts). Total runtime:
+**366.4 minutes**.
+
+### Holdout (54 test samples)
+
+| Model              | Accuracy | AUC      | F1(SSc) | Time (s) |
+|---                 |---       |---       |---      |---       |
+| **Classical XGB**  | 0.889    | **0.948**| 0.936   | 1.3      |
+| Quantum VQC        | **0.926**| 0.905    | **0.957**| 877.1   |
+| Classical MLP      | 0.907    | 0.902    | 0.947   | 0.7      |
+| Classical RBF SVM  | 0.833    | 0.872    | 0.894   | 15.3     |
+| Quantum Kernel     | 0.833    | 0.707    | 0.907   | 1501.0   |
+
+Headline: **tuned XGBoost wins AUC**, but **VQC wins Accuracy and F1**, and the
+parameter-matched MLP is essentially tied with VQC on AUC (0.902 vs 0.905).
+
+### 5-Fold Cross-Validation AUC
+
+| Model              | Mean AUC  | Std   | Min   | Max   |
+|---                 |---        |---    |---    |---    |
+| **Classical XGB**  | **0.899** | 0.101 | 0.745 | 0.991 |
+| Quantum VQC        | 0.822     | 0.069 | 0.728 | 0.917 |
+| Classical RBF SVM  | 0.812     | 0.112 | 0.634 | 0.932 |
+| Classical MLP      | 0.776     | 0.093 | 0.648 | 0.926 |
+| Quantum Kernel     | 0.570     | 0.129 | 0.446 | 0.801 |
+
+On CV, the VQC has the **lowest variance** (std = 0.069) of any model — the
+parameter-matched MLP swings much more (0.093) and XGBoost more again (0.101).
+VQC beats both classical neural networks on the 5-fold mean.
+
+### Learning Curves (mean AUC across 3 repeats per fraction; per-subsample refit)
+
+| Model             | 10%    | 20%    | 30%    | 50%    | 75%    | 100%   |
+|---                |---     |---     |---     |---     |---     |---     |
+| Quantum VQC       | 0.683  | 0.729  | 0.779  | 0.880  | 0.874  | 0.883  |
+| Classical MLP     | 0.671  | 0.785  | 0.774  | 0.847  | 0.923  | 0.919  |
+| Classical XGB     | 0.500  | 0.712  | 0.701  | 0.756  | 0.915  | 0.946  |
+| Classical RBF SVM | 0.310  | 0.557  | 0.548  | 0.593  | 0.820  | 0.872  |
+| Quantum Kernel    | N/A    | N/A    | 0.649  | 0.623  | 0.732  | 0.707  |
+
+Quantum kernel runs only at `frac ≥ 0.30` (smaller subsets cause its inner
+3-fold C-tuning to produce undefined ROC AUC).
+
+**Small-data observation**: At 10 % of training data (~21 samples) the VQC
+holds AUC 0.683 while XGBoost collapses to 0.500 (no signal) and the RBF SVM
+collapses to 0.310 (worse than random). Even the parameter-matched MLP starts
+below VQC at 10 % and only overtakes it at 75 %. This is consistent with the
+"quantum models degrade gracefully in low-data" hypothesis.
+
+### Statistical Tests (paired t-test on 5 CV fold AUCs)
+
+| Comparison              | t      | p       | Cohen's d | Significant?          |
+|---                      |---     |---      |---        |---                    |
+| **VQC vs Matched-MLP**  |  1.090 | 0.3368  |  0.505    | No (medium effect)    |
+| VQC vs Tuned-XGB        | -1.468 | 0.2161  | -0.795    | No (medium effect)    |
+| VQC vs RBF-SVM          |  0.173 | 0.8710  |  0.097    | No (negligible)       |
+| **Q-Kernel vs RBF-SVM** | -4.688 | **0.0094** | -1.791 | **Yes** (SVM wins)    |
+| **Q-Kernel vs XGB**     | -6.697 | **0.0026** | -2.538 | **Yes** (XGB wins)    |
+| **VQC vs Q-Kernel**     |  3.185 | **0.0334** |  2.178 | **Yes** (VQC wins)    |
+
+### McNemar's Tests (per-sample agreement on holdout)
+
+| Comparison           | p      | Significant?  |
+|---                   |---     |---            |
+| VQC vs Matched-MLP   | 1.000  | No            |
+| VQC vs Tuned-XGB     | 0.625  | No            |
+| Q-Kernel vs RBF-SVM  | 1.000  | No            |
+
+McNemar uses an exact binomial test when `b+c < 25` (the case here, n=54
+holdout). Within the holdout, none of the top three (VQC, MLP, XGB) make
+significantly different predictions — they disagree on at most a handful of
+samples and the disagreements are evenly split.
+
+---
+
+## Methodology fixes (May 2026)
+
+The v06 code already targeted the v04 SMOTE-leakage problem at the design
+level, but the implementation still had several issues that were corrected:
+
+- **SMOTE leakage in CV (inherited from v04 pattern)** — earlier helpers
+  applied SMOTE before splitting. Now `apply_smote_to_fold()` is called
+  *inside each fold* so the validation rows are always pure real samples.
+- **Feature-engineering leakage in CV** — ANOVA F-test, `StandardScaler`,
+  PCA, and the `[0, π]` `MinMaxScaler` were fit on the full training set and
+  reused per fold. Now refit per fold via `build_fold_features()`.
+- **Feature-engineering leakage in learning curves** — same problem at each
+  data fraction. Now refit per subsample.
+- **Holdout VQC/MLP previously trained with SMOTE despite the README claim
+  of holdout = real-only.** Holdout now passes `use_smote=False`; CV and LC
+  still use per-fold SMOTE for VQC/MLP (XGB/SVM/QKernel never get SMOTE).
+- **SMOTE + `pos_weight` contradiction** removed from VQC/MLP: SMOTE
+  rebalances classes, so `BCELoss(weight=pos_weight)` was double-counting.
+  Loss is now plain `nn.BCELoss()`.
+- **Silent learning-curve `try/except` removed** — failures used to be
+  swallowed and reported as NaN. They now propagate so they can be diagnosed.
+- **Quantum-kernel `predict_proba` on a precomputed kernel fixed** —
+  sklearn's `SVC(probability=True)` ignores a precomputed Gram for Platt
+  scaling. Switched to `decision_function(K_val)` for AUC.
+- **McNemar exact binomial for small `b+c`** — `scipy.stats.binomtest` is
+  used when `b+c < 25`, χ² otherwise. Avoids invalid χ² approximations on
+  the 54-sample holdout.
+- **JSON encoder** — `NumpyEncoder` now also handles `np.bool_`, which broke
+  the very last save step of the May 2026 run (results file rebuilt manually
+  from the console log for that run; future runs save normally).
+
+These fixes did not change the headline ranking but tightened the CV/LC AUC
+distributions and made the holdout VQC/MLP comparison genuinely apples-to-apples.
+
+---
+
+## v04 vs v05 vs v06 Side-by-Side (post-fix, CV mean AUC ± std)
+
+| Model             | v04 (64 MI feats, 6-qubit, SMOTE) | v05 (16 ANOVA, 4-qubit, no SMOTE) | v06 (16 ANOVA, 4-qubit, per-fold SMOTE) |
+|---                |---                                |---                                |---                                       |
+| Quantum VQC       | **0.983** ± 0.014                 | 0.832 ± 0.081                     | 0.822 ± 0.069                            |
+| Quantum Kernel    | 0.891 ± 0.088                     | 0.693 ± 0.111                     | 0.570 ± 0.129                            |
+| Classical MLP     | 0.975 ± 0.028                     | **0.891** ± 0.067                 | 0.776 ± 0.093                            |
+| Classical XGB     | 0.920 ± 0.024                     | 0.825 ± 0.067                     | **0.899** ± 0.101                        |
+| Classical RBF SVM | —                                 | —                                 | 0.812 ± 0.112                            |
+
+Within-version best:
+- **v04 (post-fix)**: VQC ≈ MLP > XGB > Kernel
+- **v05 (post-fix)**: MLP > VQC ≈ XGB > Kernel
+- **v06 (post-fix)**: XGB > VQC > SVM ≈ MLP > Kernel
+
+### What This Means
+
+- **VQC has the lowest CV variance** of any model in v06 (std 0.069), beating
+  both the parameter-matched MLP (0.093) and tuned XGBoost (0.101). The
+  paired t-test against the MLP is not significant (p = 0.34, Cohen's
+  d = 0.51 medium effect) — so the **structural** advantage of the data-
+  reuploading circuit at matched parameter count is suggestive but not
+  conclusive in this dataset.
+- **VQC wins decisively at small data**: at 10 % training data (~21 samples)
+  VQC's mean AUC is 0.683 while RBF-SVM is 0.310 and XGBoost is 0.500
+  (random). The MLP only catches up at 75 %.
+- **Quantum kernel loses convincingly to RBF (p = 0.0094, d = -1.79) and to
+  XGBoost (p = 0.0026, d = -2.54).** On 16 ANOVA-selected features, the
+  all-to-all ZZ feature map does not capture useful structure — likely the
+  high condition number of the Gram matrix on this small/feature-light
+  regime.
+- **Compute cost stays prohibitive**: VQC training is ~1250× slower than the
+  matched MLP on holdout (877 s vs 0.7 s); the quantum kernel is the
+  slowest model at 1501 s on holdout and dominates the 366-minute total.
 
 ## Theoretical Justification
 

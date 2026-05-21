@@ -25,6 +25,61 @@ DATA_DIR = _ROOT / "data" / "GSE76809"
 OUTPUT_DIR = _ROOT / "data" / "GSE76809" / "processed_v04"
 
 
+def apply_smote_to_fold(X_train, y_train, random_state=42):
+    """Apply BorderlineSMOTE (or fall back to SMOTE) to a single fold's training data.
+
+    This is the CORRECT way to use SMOTE: synthetic samples are only ever
+    generated from the training portion of a fold, never from validation rows.
+    """
+    minority_count = int(min(np.bincount(y_train.astype(int))))
+    k_neighbors = max(1, min(5, minority_count - 1))
+    try:
+        sm = BorderlineSMOTE(random_state=random_state, k_neighbors=k_neighbors)
+        return sm.fit_resample(X_train, y_train)
+    except ValueError:
+        sm = SMOTE(random_state=random_state, k_neighbors=k_neighbors)
+        return sm.fit_resample(X_train, y_train)
+
+
+def build_fold_features(X_train_raw, y_train, X_val_raw, n_features=64,
+                        n_pca=8, random_state=42):
+    """Fit MI selection + StandardScaler + PCA on the fold's training rows ONLY.
+
+    Used by both CV folds and learning-curve subsamples so that small-data
+    points are not given features chosen on the full training set.
+    """
+    mi_scores = mutual_info_classif(
+        X_train_raw, y_train, random_state=random_state, n_neighbors=5
+    )
+    mi_scores = np.nan_to_num(mi_scores, nan=0.0)
+    top_idx = np.argsort(mi_scores)[-n_features:]
+
+    X_tr_sel = X_train_raw[:, top_idx]
+    X_va_sel = X_val_raw[:, top_idx]
+
+    scaler = StandardScaler()
+    X_tr = scaler.fit_transform(X_tr_sel)
+    X_va = scaler.transform(X_va_sel)
+
+    pca = PCA(n_components=n_pca, random_state=random_state)
+    X_tr_pca = pca.fit_transform(X_tr)
+    X_va_pca = pca.transform(X_va)
+    from sklearn.preprocessing import MinMaxScaler
+    pca_scaler = MinMaxScaler(feature_range=(0, np.pi))
+    X_tr_pca = pca_scaler.fit_transform(X_tr_pca)
+    X_va_pca = pca_scaler.transform(X_va_pca)
+
+    X_tr_norm = X_tr / (np.linalg.norm(X_tr, axis=1, keepdims=True) + 1e-10)
+    X_va_norm = X_va / (np.linalg.norm(X_va, axis=1, keepdims=True) + 1e-10)
+
+    return {
+        "X_train": X_tr, "X_val": X_va,
+        "X_train_norm": X_tr_norm, "X_val_norm": X_va_norm,
+        "X_train_pca": X_tr_pca, "X_val_pca": X_va_pca,
+        "y_train": y_train, "y_val": None,
+    }
+
+
 def assign_labels(meta: pd.DataFrame) -> pd.DataFrame:
     """Assign binary labels: 1=SSc, 0=Healthy."""
 
@@ -173,40 +228,32 @@ def preprocess(
     X_train_norm = X_train_final / (np.linalg.norm(X_train_final, axis=1, keepdims=True) + 1e-10)
     X_test_norm = X_test_scaled / (np.linalg.norm(X_test_scaled, axis=1, keepdims=True) + 1e-10)
 
-    # Generate 5-fold CV splits
-    print(f"\nGenerating {n_folds}-fold CV splits...")
-
-    # Folds on SMOTE'd data (for VQC and MLP)
+    # Generate 5-fold CV splits on the RAW (pre-SMOTE) training set.
+    # All models share the same fold indices, so paired statistics are valid.
+    # SMOTE is applied per-fold by `apply_smote_to_fold` inside the CV loop.
+    print(f"\nGenerating {n_folds}-fold CV splits (raw, no SMOTE)...")
     skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=random_state)
     folds = []
-    for fold_idx, (train_idx, val_idx) in enumerate(skf.split(X_train_final, y_train_final)):
-        X_f_train = X_train_final[train_idx]
-        X_f_val = X_train_final[val_idx]
-        y_f_train = y_train_final[train_idx]
-        y_f_val = y_train_final[val_idx]
-        X_f_train_norm = X_train_norm[train_idx]
-        X_f_val_norm = X_train_norm[val_idx]
+    for fold_idx, (train_idx, val_idx) in enumerate(skf.split(X_train_pre_smote, y_train_pre_smote)):
+        X_f_train = X_train_pre_smote[train_idx]
+        X_f_val = X_train_pre_smote[val_idx]
+        y_f_train = y_train_pre_smote[train_idx]
+        y_f_val = y_train_pre_smote[val_idx]
+
+        # Unit-norm versions (for amplitude encoding) computed from the raw fold rows
+        X_f_train_norm = X_f_train / (np.linalg.norm(X_f_train, axis=1, keepdims=True) + 1e-10)
+        X_f_val_norm = X_f_val / (np.linalg.norm(X_f_val, axis=1, keepdims=True) + 1e-10)
+
         folds.append({
             "X_train": X_f_train, "X_val": X_f_val,
             "y_train": y_f_train, "y_val": y_f_val,
             "X_train_norm": X_f_train_norm, "X_val_norm": X_f_val_norm,
+            "X_train_pca": X_train_pca[train_idx], "X_val_pca": X_train_pca[val_idx],
         })
         print(f"  Fold {fold_idx+1}: train={len(train_idx)}, val={len(val_idx)}")
 
-    # Folds on pre-SMOTE data (for kernel methods)
-    skf_pre = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=random_state)
-    folds_pre_smote = []
-    for fold_idx, (train_idx, val_idx) in enumerate(skf_pre.split(X_train_pre_smote, y_train_pre_smote)):
-        X_f_train_pca = X_train_pca[train_idx]
-        X_f_val_pca = X_train_pca[val_idx]
-        folds_pre_smote.append({
-            "X_train": X_train_pre_smote[train_idx],
-            "X_val": X_train_pre_smote[val_idx],
-            "X_train_pca": X_f_train_pca,
-            "X_val_pca": X_f_val_pca,
-            "y_train": y_train_pre_smote[train_idx],
-            "y_val": y_train_pre_smote[val_idx],
-        })
+    # Kept for backward compatibility with code that referenced both fold lists.
+    folds_pre_smote = folds
 
     # Save
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -238,6 +285,10 @@ def preprocess(
         "folds": folds,
         "folds_pre_smote": folds_pre_smote,
         "n_features": n_features,
+        # Raw (variance-filtered + QT) matrices for per-subsample refitting in
+        # learning curves. These do NOT include MI selection / scaling / PCA.
+        "X_train_raw": X_train_df.values,
+        "X_test_raw": X_test_df.values,
     }
 
 

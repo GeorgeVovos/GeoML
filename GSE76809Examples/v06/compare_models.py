@@ -24,7 +24,7 @@ import numpy as np
 from pathlib import Path
 from scipy import stats
 
-from preprocess_gse76809 import preprocess, apply_smote_to_fold
+from preprocess_gse76809 import preprocess, apply_smote_to_fold, build_fold_features
 from model_quantum_vqc import train_quantum_vqc
 from model_quantum_kernel import train_quantum_kernel
 from model_classical_mlp import train_classical_mlp
@@ -38,6 +38,8 @@ class NumpyEncoder(json.JSONEncoder):
             return int(obj)
         if isinstance(obj, (np.floating,)):
             return float(obj)
+        if isinstance(obj, (np.bool_,)):
+            return bool(obj)
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         return super().default(obj)
@@ -57,22 +59,34 @@ def mcnemars_test(y_true, preds_a, preds_b):
     """
     McNemar's test: tests whether two classifiers have the same error rate.
     Uses the contingency table of disagreements.
+
+    Uses the exact binomial test when the total disagreement count is small
+    (b+c < 25), where the chi-square approximation is unreliable.
     """
     # Correct/incorrect for each model
     correct_a = (preds_a == y_true).astype(int)
     correct_b = (preds_b == y_true).astype(int)
 
     # Contingency: cases where A is right & B wrong, and vice versa
-    b_count = np.sum((correct_a == 1) & (correct_b == 0))  # A right, B wrong
-    c_count = np.sum((correct_a == 0) & (correct_b == 1))  # A wrong, B right
+    b_count = int(np.sum((correct_a == 1) & (correct_b == 0)))  # A right, B wrong
+    c_count = int(np.sum((correct_a == 0) & (correct_b == 1)))  # A wrong, B right
 
-    # McNemar's statistic (with continuity correction)
-    if b_count + c_count == 0:
+    n = b_count + c_count
+    if n == 0:
         return 1.0  # No disagreements
-    
-    statistic = (abs(b_count - c_count) - 1) ** 2 / (b_count + c_count)
-    p_value = 1 - stats.chi2.cdf(statistic, df=1)
-    return p_value
+
+    if n < 25:
+        # Exact two-sided binomial test on min(b, c) successes out of n trials
+        # under H0: p = 0.5.
+        try:
+            res = stats.binomtest(min(b_count, c_count), n=n, p=0.5, alternative='two-sided')
+            return float(res.pvalue)
+        except AttributeError:  # older scipy
+            return float(stats.binom_test(min(b_count, c_count), n=n, p=0.5))
+
+    # Chi-square approximation with continuity correction
+    statistic = (abs(b_count - c_count) - 1) ** 2 / n
+    return float(1 - stats.chi2.cdf(statistic, df=1))
 
 
 def run_cv(data, n_folds=5):
@@ -152,10 +166,10 @@ def run_holdout(data):
     results = {}
     timings = {}
 
-    # Quantum VQC
+    # Quantum VQC (holdout — no SMOTE, matches metadata claim)
     print("\n--- Holdout: Quantum VQC ---")
     t0 = time.time()
-    vqc_res = train_quantum_vqc(fold_data=holdout_fold)
+    vqc_res = train_quantum_vqc(fold_data=holdout_fold, use_smote=False)
     timings["quantum_vqc"] = time.time() - t0
     results["quantum_vqc"] = vqc_res
 
@@ -166,10 +180,10 @@ def run_holdout(data):
     timings["quantum_kernel"] = time.time() - t0
     results["quantum_kernel"] = kernel_res
 
-    # Classical MLP
+    # Classical MLP (holdout — no SMOTE, matches metadata claim)
     print("\n--- Holdout: Classical MLP ---")
     t0 = time.time()
-    mlp_res = train_classical_mlp(fold_data=holdout_fold)
+    mlp_res = train_classical_mlp(fold_data=holdout_fold, use_smote=False)
     timings["classical_mlp"] = time.time() - t0
     results["classical_mlp"] = mlp_res
 
@@ -193,9 +207,11 @@ def run_holdout(data):
 def run_learning_curves(data, fractions=None, n_repeats=3):
     """
     Fine-grained learning curves at small data fractions.
-    
-    Tests quantum advantage hypothesis: quantum models should maintain
-    performance at small data sizes where classical tree methods collapse.
+
+    For each subsample, ANOVA selection / StandardScaler / PCA are REFIT on
+    that subsample only, and SMOTE is applied per subsample for the deep
+    models. This way the small-data points genuinely reflect what each model
+    learns from only that much data.
     """
     if fractions is None:
         fractions = [0.10, 0.20, 0.30, 0.50, 0.75, 1.0]
@@ -204,86 +220,75 @@ def run_learning_curves(data, fractions=None, n_repeats=3):
     print(f"LEARNING CURVES — Data fractions: {fractions}")
     print(f"{'='*70}\n")
 
-    X_train = data["X_train"]
-    X_test = data["X_test"]
+    X_train_raw = data["X_train_raw"]      # variance-filtered, QT'd holdout-train
+    X_test_raw = data["X_test_raw"]
     y_train = data["y_train"]
     y_test = data["y_test"]
-    X_train_pca = data["X_train_pca"]
-    X_test_pca = data["X_test_pca"]
+    n_features = data["n_features"]
+    pca_components = data["pca_components"]
+    random_state = data["random_state"]
 
     results = {model: {str(f): [] for f in fractions}
                for model in ["quantum_vqc", "classical_mlp", "classical_xgb",
                              "classical_svm", "quantum_kernel"]}
 
-    rng = np.random.RandomState(2026)
+    rng = np.random.RandomState(random_state)
 
     for frac in fractions:
-        n_samples = int(len(X_train) * frac)
+        n_samples = int(len(X_train_raw) * frac)
         print(f"\n--- Data fraction: {frac*100:.0f}% ({n_samples} samples) ---")
 
         for rep in range(n_repeats):
             if frac < 1.0:
-                idx = rng.choice(len(X_train), n_samples, replace=False)
+                idx = rng.choice(len(X_train_raw), n_samples, replace=False)
             else:
-                idx = np.arange(len(X_train))
+                idx = np.arange(len(X_train_raw))
 
-            # Build fold-like dict for this subset
-            fold = {
-                "X_train": X_train[idx],
-                "X_val": X_test,
-                "y_train": y_train[idx],
-                "y_val": y_test,
-                "X_train_pca": X_train_pca[idx],
-                "X_val_pca": X_test_pca,
-            }
+            # Refit ANOVA / scaler / PCA on the subsample only
+            fold_raw = build_fold_features(
+                X_train_raw[idx], y_train[idx], X_test_raw,
+                n_features=n_features, pca_components=pca_components,
+                random_state=random_state,
+            )
+            fold_raw["y_val"] = y_test
+
+            # Per-subsample SMOTE for VQC / MLP
+            X_aug, y_aug = apply_smote_to_fold(
+                fold_raw["X_train"], fold_raw["y_train"], random_state=random_state
+            )
+            X_aug_norm = X_aug / (np.linalg.norm(X_aug, axis=1, keepdims=True) + 1e-10)
+            fold_smote = dict(fold_raw)
+            fold_smote["X_train"] = X_aug
+            fold_smote["y_train"] = y_aug
+            fold_smote["X_train_norm"] = X_aug_norm
 
             print(f"\n  Repeat {rep+1}/{n_repeats} at {frac*100:.0f}%:")
 
-            # Quantum VQC
+            # Quantum VQC (SMOTE'd subsample)
             print(f"    [VQC]", end=" ")
-            try:
-                vqc_r = train_quantum_vqc(fold_data=fold, epochs=60, patience=12)
-                results["quantum_vqc"][str(frac)].append(vqc_r["auc_roc"])
-            except Exception as e:
-                print(f"    VQC failed: {e}")
-                results["quantum_vqc"][str(frac)].append(0.5)
+            vqc_r = train_quantum_vqc(fold_data=fold_smote, epochs=60, patience=12, use_smote=False)
+            results["quantum_vqc"][str(frac)].append(vqc_r["auc_roc"])
 
-            # Classical MLP (parameter-matched)
+            # Classical MLP (SMOTE'd subsample)
             print(f"    [MLP]", end=" ")
-            try:
-                mlp_r = train_classical_mlp(fold_data=fold, epochs=60, patience=12)
-                results["classical_mlp"][str(frac)].append(mlp_r["auc_roc"])
-            except Exception as e:
-                print(f"    MLP failed: {e}")
-                results["classical_mlp"][str(frac)].append(0.5)
+            mlp_r = train_classical_mlp(fold_data=fold_smote, epochs=60, patience=12, use_smote=False)
+            results["classical_mlp"][str(frac)].append(mlp_r["auc_roc"])
 
-            # Classical XGBoost
+            # Classical XGBoost (raw subsample — handles imbalance natively)
             print(f"    [XGB]", end=" ")
-            try:
-                xgb_r = train_classical_xgb(fold_data=fold)
-                results["classical_xgb"][str(frac)].append(xgb_r["auc_roc"])
-            except Exception as e:
-                print(f"    XGB failed: {e}")
-                results["classical_xgb"][str(frac)].append(0.5)
+            xgb_r = train_classical_xgb(fold_data=fold_raw)
+            results["classical_xgb"][str(frac)].append(xgb_r["auc_roc"])
 
-            # Classical RBF SVM
+            # Classical RBF SVM (raw subsample)
             print(f"    [SVM]", end=" ")
-            try:
-                svm_r = train_classical_svm(fold_data=fold)
-                results["classical_svm"][str(frac)].append(svm_r["auc_roc"])
-            except Exception as e:
-                print(f"    SVM failed: {e}")
-                results["classical_svm"][str(frac)].append(0.5)
+            svm_r = train_classical_svm(fold_data=fold_raw)
+            results["classical_svm"][str(frac)].append(svm_r["auc_roc"])
 
             # Quantum Kernel (only at 30%+ to keep runtime manageable)
             if frac >= 0.30:
                 print(f"    [QKernel]", end=" ")
-                try:
-                    qk_r = train_quantum_kernel(fold_data=fold)
-                    results["quantum_kernel"][str(frac)].append(qk_r["auc_roc"])
-                except Exception as e:
-                    print(f"    QKernel failed: {e}")
-                    results["quantum_kernel"][str(frac)].append(0.5)
+                qk_r = train_quantum_kernel(fold_data=fold_raw)
+                results["quantum_kernel"][str(frac)].append(qk_r["auc_roc"])
             else:
                 results["quantum_kernel"][str(frac)].append(np.nan)
 

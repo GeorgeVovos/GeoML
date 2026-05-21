@@ -76,6 +76,42 @@ def apply_smote_to_fold(X_train, y_train, random_state=2026):
     return X_aug, y_aug
 
 
+def build_fold_features(X_train_raw, y_train, X_val_raw, n_features=16,
+                        pca_components=6, random_state=2026):
+    """Fit ANOVA selection + StandardScaler + PCA on the fold's training rows ONLY.
+
+    Refitting these inside every CV fold prevents validation rows from
+    influencing which features and PCA components are chosen.
+    """
+    f_scores, _ = f_classif(X_train_raw, y_train)
+    f_scores = np.nan_to_num(f_scores, nan=0.0)
+    top_idx = np.argsort(f_scores)[-n_features:]
+
+    X_tr_sel = X_train_raw[:, top_idx]
+    X_va_sel = X_val_raw[:, top_idx]
+
+    scaler = StandardScaler()
+    X_tr = scaler.fit_transform(X_tr_sel)
+    X_va = scaler.transform(X_va_sel)
+
+    pca = PCA(n_components=pca_components, random_state=random_state)
+    X_tr_pca = pca.fit_transform(X_tr)
+    X_va_pca = pca.transform(X_va)
+    pca_scaler = MinMaxScaler(feature_range=(0, np.pi))
+    X_tr_pca = pca_scaler.fit_transform(X_tr_pca)
+    X_va_pca = pca_scaler.transform(X_va_pca)
+
+    X_tr_norm = X_tr / (np.linalg.norm(X_tr, axis=1, keepdims=True) + 1e-10)
+    X_va_norm = X_va / (np.linalg.norm(X_va, axis=1, keepdims=True) + 1e-10)
+
+    return {
+        "X_train": X_tr, "X_val": X_va,
+        "X_train_norm": X_tr_norm, "X_val_norm": X_va_norm,
+        "X_train_pca": X_tr_pca, "X_val_pca": X_va_pca,
+        "y_train": y_train, "y_val": None,
+    }
+
+
 def preprocess(n_features=16, n_folds=5, random_state=2026, pca_components=6):
     """
     Preprocess GSE76809 with correct per-fold SMOTE methodology.
@@ -178,25 +214,23 @@ def preprocess(n_features=16, n_folds=5, random_state=2026, pca_components=6):
     print(f"Train: {X_train_scaled.shape[0]} (SSc={sum(y_train==1)}, Healthy={sum(y_train==0)})")
     print(f"Test: {X_test_scaled.shape[0]} (SSc={sum(y_test==1)}, Healthy={sum(y_test==0)})")
 
-    # Generate 5-fold CV splits (NO SMOTE — applied per-fold during training)
-    print(f"\nGenerating {n_folds}-fold CV splits (raw, no SMOTE)...")
+    # Generate 5-fold CV splits with per-fold ANOVA/scaling/PCA (no leakage).
+    # SMOTE is also applied per-fold by the models that need it.
+    print(f"\nGenerating {n_folds}-fold CV splits (per-fold feature engineering)...")
+    X_train_raw_all = X_train_df.values  # variance-filtered, unselected, unscaled
     skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=random_state)
     folds = []
-    
-    for fold_idx, (train_idx, val_idx) in enumerate(skf.split(X_train_scaled, y_train)):
-        fold_data = {
-            # Raw scaled features
-            "X_train": X_train_scaled[train_idx],
-            "X_val": X_train_scaled[val_idx],
-            "y_train": y_train[train_idx],
-            "y_val": y_train[val_idx],
-            # Unit-norm for amplitude encoding
-            "X_train_norm": X_train_norm[train_idx],
-            "X_val_norm": X_train_norm[val_idx],
-            # PCA for kernel
-            "X_train_pca": X_train_pca[train_idx],
-            "X_val_pca": X_train_pca[val_idx],
-        }
+
+    for fold_idx, (train_idx, val_idx) in enumerate(skf.split(X_train_raw_all, y_train)):
+        fold_data = build_fold_features(
+            X_train_raw_all[train_idx],
+            y_train[train_idx],
+            X_train_raw_all[val_idx],
+            n_features=n_features,
+            pca_components=pca_components,
+            random_state=random_state,
+        )
+        fold_data["y_val"] = y_train[val_idx]
         folds.append(fold_data)
         print(f"  Fold {fold_idx+1}: train={len(train_idx)} "
               f"(SSc={sum(y_train[train_idx]==1)}, H={sum(y_train[train_idx]==0)}), "
@@ -216,6 +250,10 @@ def preprocess(n_features=16, n_folds=5, random_state=2026, pca_components=6):
         "n_features": n_features,
         "pca_components": pca_components,
         "random_state": random_state,
+        # Raw (variance-filtered + QT) matrices for per-subsample refitting in
+        # learning curves. These do NOT include ANOVA selection / scaling / PCA.
+        "X_train_raw": X_train_df.values,
+        "X_test_raw": X_test_df.values,
     }
 
 

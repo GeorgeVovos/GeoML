@@ -153,11 +153,9 @@ def train_quantum_vqc(fold_data, epochs=80, batch_size=24, lr=0.005,
     model = DataReuploadingVQC(n_features=N_FEATURES)
     print(f"    VQC parameters: {model.count_parameters()}")
 
-    # Class-weighted loss
-    n_pos = sum(y_train == 1)
-    n_neg = sum(y_train == 0)
-    pos_weight = torch.tensor([n_neg / max(n_pos, 1)])
-    criterion = nn.BCELoss(reduction='none')
+    # Class balance handled by per-fold SMOTE above, so plain (unweighted) BCE
+    # is the consistent choice; mixing SMOTE with pos_weight double-corrects.
+    criterion = nn.BCELoss()
 
     # Optimizer with warmup
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -186,12 +184,8 @@ def train_quantum_vqc(fold_data, epochs=80, batch_size=24, lr=0.005,
 
             optimizer.zero_grad()
             preds = model(X_batch)
-            
-            # Weighted BCE
-            loss_per_sample = criterion(preds, y_batch)
-            weights = torch.where(y_batch == 1, pos_weight, torch.ones(1))
-            loss = (loss_per_sample * weights).mean()
-            
+            loss = criterion(preds, y_batch)
+
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()

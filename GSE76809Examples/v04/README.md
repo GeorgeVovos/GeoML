@@ -11,6 +11,11 @@ This version is specifically designed to **show scenarios where quantum machine 
 5. Running **learning curves** to show quantum advantage at small sample sizes
 6. Performing **paired t-tests** for statistical significance
 
+> **Methodology update (May 2026):** the pipeline was overhauled to remove
+> several leakage and pairing bugs that inflated earlier numbers. See the
+> [Methodology fixes](#methodology-fixes-may-2026) section below for details.
+> All numbers in the [Results](#results) section are from the corrected run.
+
 ---
 
 ## Why Quantum Might Beat Classical Here
@@ -194,12 +199,13 @@ python compare_models.py
 | Component | Approximate Time |
 |-----------|-----------------|
 | Preprocessing | ~30 seconds |
-| Holdout evaluation (4 models) | ~15 minutes |
-| 5-fold CV (4 models × 5 folds) | ~60 minutes |
-| Learning curves (4 models × 4 fractions) | ~40 minutes |
+| Holdout evaluation (4 models) | ~10 minutes |
+| 5-fold CV (4 models × 5 folds, per-fold preprocessing + per-fold SMOTE) | ~70 minutes |
+| Learning curves (4 models × 4 fractions, per-subsample refit) | ~40 minutes |
 | **Total** | **~2 hours** |
 
-The quantum kernel is the fastest per-fold (~3 min) because it doesn't need gradient training. The VQC is slowest (~5-8 min/fold) due to per-sample circuit evaluation.
+The quantum kernel costs ~2–3 min per fold for the Gram-matrix computation. The
+VQC is the slowest per-fold (~5–10 min) due to per-sample circuit evaluation.
 
 ---
 
@@ -295,55 +301,105 @@ If p < 0.05 for "VQC vs XGBoost" or "Kernel vs XGBoost", the quantum advantage i
 
 ## Results
 
+Results below are from the corrected pipeline (see
+[Methodology fixes](#methodology-fixes-may-2026)). All numbers come from
+`results/v04_comparison_results.json`.
+
 ### Cross-Validation AUC (5-fold) — Most Reliable Comparison
 
 | Model | Mean AUC | Std | Min | Max |
 |-------|----------|-----|-----|-----|
-| **Quantum VQC** | **0.9977** | ±0.0038 | 0.9902 | 1.0000 |
-| Classical MLP | 0.9940 | ±0.0092 | 0.9760 | 1.0000 |
-| Classical XGBoost | 0.9211 | ±0.0272 | 0.8796 | 0.9595 |
+| **Quantum VQC** | **0.9827** | ±0.0137 | 0.9630 | 1.0000 |
+| Classical MLP | 0.9747 | ±0.0278 | 0.9324 | 1.0000 |
+| Classical XGBoost | 0.9202 | ±0.0237 | 0.8843 | 0.9505 |
 | Quantum Kernel | 0.8909 | ±0.0878 | 0.7342 | 1.0000 |
 
 ### Holdout Results (Single Train/Test Split)
 
 | Model | Accuracy | AUC | F1(SSc) | F1(Healthy) |
 |-------|----------|-----|---------|-------------|
-| Classical MLP | 0.9630 | 0.9348 | 0.9787 | 0.8571 |
-| **Quantum VQC** | 0.8889 | **0.9484** | 0.9318 | 0.7000 |
-| Classical XGBoost | 0.8889 | 0.9185 | 0.9318 | 0.7000 |
+| Classical MLP | 0.9074 | **0.9565** | 0.9438 | 0.7368 |
+| Classical XGBoost | 0.8704 | 0.9158 | 0.9195 | 0.6667 |
+| **Quantum VQC** | **0.9630** | 0.8967 | 0.9787 | 0.8571 |
 | Quantum Kernel | 0.8889 | 0.7364 | 0.9362 | 0.5714 |
 
 ### Learning Curves (AUC at Different Data Fractions)
 
+Feature selection / scaling / PCA are now refit on each subsample, and SMOTE is
+applied **after** subsampling — so each row reflects what each model actually
+learns from that much real data.
+
 | Model | 25% data | 50% data | 75% data | 100% data |
 |-------|----------|----------|----------|-----------|
-| Classical MLP | 0.9810 | 0.9701 | 0.9429 | 0.9674 |
-| Quantum VQC | 0.8913 | 0.8859 | 0.9511 | 0.8913 |
-| Classical XGBoost | **0.5000** | 0.7446 | 0.9022 | 0.9185 |
-| Quantum Kernel | 0.7201 | 0.8342 | 0.7337 | 0.7364 |
+| Quantum VQC | 0.8560 | 0.8859 | 0.9266 | 0.8723 |
+| Classical MLP | 0.8234 | 0.8859 | 0.9565 | 0.9592 |
+| Classical XGBoost | 0.5000 | 0.6739 | 0.8370 | 0.9212 |
+| Quantum Kernel | 0.5027 | 0.8859 | 0.5625 | 0.7364 |
 
 ### Statistical Significance (Paired t-test on 5-fold AUCs)
 
 | Comparison | t-statistic | p-value | Significant? |
 |-----------|-------------|---------|--------------|
-| **VQC vs XGBoost** | 5.34 | **0.0059** | **Yes** |
-| VQC vs MLP | 0.75 | 0.4943 | No |
-| Kernel vs MLP | -2.55 | 0.0630 | No |
-| Kernel vs XGBoost | -0.58 | 0.5926 | No |
+| **VQC vs XGBoost** | 4.12 | **0.0147** | **Yes** |
+| VQC vs MLP | 0.58 | 0.5909 | No |
+| Kernel vs MLP | -2.22 | 0.0910 | No |
+| Kernel vs XGBoost | -0.59 | 0.5892 | No |
 
 ### Key Findings
 
-1. **Quantum VQC is the best model overall** — highest mean CV AUC (0.9977) with the lowest variance (±0.0038), indicating both superior and more consistent performance.
+1. **Quantum VQC has the highest mean CV AUC** (0.9827 ± 0.0137). With per-fold
+   SMOTE and per-fold feature engineering, the previous near-perfect 0.998 score
+   collapsed to a still-strong but realistic 0.983.
 
-2. **Quantum VQC significantly outperforms XGBoost** (p=0.0059) — this is a statistically significant result. XGBoost is considered the gold standard for tabular data, so beating it meaningfully demonstrates quantum advantage.
+2. **Quantum VQC significantly outperforms XGBoost** (p=0.0147). XGBoost is the
+   gold standard for tabular data, so beating it on a per-fold paired test is a
+   meaningful result — and it now uses an honest fold construction.
 
-3. **XGBoost completely fails at small data** — at 25% training data, XGBoost achieves AUC=0.50 (random guessing), while Quantum VQC maintains AUC=0.89. This demonstrates the quantum model's sample efficiency.
+3. **Quantum VQC vs Classical MLP is statistically a tie** (p=0.59). Both reach
+   ~0.97–0.98 mean CV AUC, but the VQC does it with **5,619 parameters** vs the
+   MLP's **120,737** — about 21× fewer parameters.
 
-4. **Quantum VQC vs Classical MLP is a near-tie** — both achieve near-perfect CV AUC (0.9977 vs 0.9940), with the difference not statistically significant. However, the VQC uses only 5,619 parameters vs the MLP's 120,737 — achieving comparable accuracy with 21× fewer parameters.
+4. **Sample-efficiency advantage at 25% data**: VQC AUC = 0.86, MLP = 0.82,
+   XGBoost = 0.50 (random). XGBoost completely collapses on 53 training samples,
+   while the quantum and parameter-light models still discriminate.
 
-5. **Quantum Kernel underperformed** — the ZZ feature map with PCA projection to 8 qubits was not expressive enough for this dataset. The aggressive dimensionality reduction (64→8) likely discarded discriminative information.
+5. **Best holdout AUC is the MLP** (0.9565). Holdout is one realization of an
+   80/20 split (n=54 test); the per-fold CV estimate is more reliable for
+   ranking models, and there VQC > MLP > XGBoost > Kernel.
 
-6. **Total runtime**: ~246 minutes (~4 hours) on CPU simulation. The VQC dominates runtime due to per-sample quantum circuit evaluation.
+6. **Quantum Kernel underperformed and is unstable** (CV std = 0.088, LC values
+   bounce between 0.50 and 0.89). The aggressive PCA reduction to 8 qubits and
+   fixed ZZ feature map are likely discarding discriminative information.
+
+7. **Total runtime**: ~119 minutes on CPU simulation. The VQC dominates runtime
+   due to per-sample circuit evaluation; the quantum kernel is second because of
+   the O(n²) Gram-matrix computation.
+
+---
+
+## Methodology fixes (May 2026)
+
+The earlier version of this pipeline contained several leakage and pairing bugs
+that inflated CV AUCs (VQC was reported at 0.998). The current code fixes:
+
+- **SMOTE-before-CV leakage** — synthetic minority samples generated from the
+  full training set were being used in both train and validation folds. SMOTE
+  is now applied *inside* each CV fold, on the training side only, after the
+  split.
+- **Misaligned fold pairing** — different models were getting different folds.
+  A single `StratifiedKFold` is now built once on the raw training set and
+  reused for every model, so paired t-tests are honest.
+- **Feature-engineering leakage in learning curves** — mutual-information
+  feature selection, `StandardScaler`, PCA, and `MinMaxScaler` were fit on the
+  full training set and then applied to subsampled folds. They are now refit on
+  each subsample via `build_fold_features()`.
+- **Subsampling SMOTE'd data in learning curves** — "25% of training data"
+  meant 25% of the SMOTE-augmented matrix, so small-data points were dominated
+  by synthetic samples. The pipeline now subsamples *raw* rows first, then
+  applies SMOTE per subsample.
+
+Results stored in `results/v04_comparison_results.json` reflect the post-fix
+run.
 
 ---
 

@@ -21,11 +21,25 @@ import numpy as np
 from scipy import stats
 
 sys.path.insert(0, str(Path(__file__).parent))
-from preprocess_gse76809 import preprocess
+from preprocess_gse76809 import preprocess, apply_smote_to_fold, build_fold_features
 from model_quantum_vqc import train_quantum_vqc
 from model_quantum_kernel import train_quantum_kernel
 from model_classical_mlp import train_classical_mlp
 from model_classical_xgb import train_classical_xgb
+
+
+def _smote_fold(fold, random_state=42):
+    """Return a copy of `fold` with SMOTE applied to the training rows only.
+
+    Validation rows are passed through unchanged so they remain real samples.
+    """
+    X_aug, y_aug = apply_smote_to_fold(fold["X_train"], fold["y_train"], random_state=random_state)
+    X_aug_norm = X_aug / (np.linalg.norm(X_aug, axis=1, keepdims=True) + 1e-10)
+    new_fold = dict(fold)
+    new_fold["X_train"] = X_aug
+    new_fold["y_train"] = y_aug
+    new_fold["X_train_norm"] = X_aug_norm
+    return new_fold
 
 RESULTS_DIR = Path(__file__).parent / "results"
 RESULTS_DIR.mkdir(exist_ok=True)
@@ -50,7 +64,6 @@ def run_cv(data, n_folds=5):
     Returns dict with per-fold results for each model.
     """
     folds = data["folds"]
-    folds_pre_smote = data["folds_pre_smote"]
 
     results = {
         "quantum_vqc": {"aucs": [], "accs": [], "f1s": []},
@@ -64,33 +77,34 @@ def run_cv(data, n_folds=5):
         print(f"# FOLD {fold_idx + 1}/{n_folds}")
         print(f"{'#'*70}\n")
 
-        fold = folds[fold_idx]
-        fold_pre = folds_pre_smote[fold_idx]
+        fold_raw = folds[fold_idx]
+        # Per-fold SMOTE for models that need balanced training (VQC, MLP)
+        fold_smote = _smote_fold(fold_raw, random_state=42 + fold_idx)
 
-        # 1. Quantum VQC
+        # 1. Quantum VQC (uses per-fold SMOTE'd data)
         print(f"\n--- Fold {fold_idx+1}: Quantum VQC ---")
-        vqc_res = train_quantum_vqc(fold_data=fold)
+        vqc_res = train_quantum_vqc(fold_data=fold_smote)
         results["quantum_vqc"]["aucs"].append(vqc_res["auc_roc"])
         results["quantum_vqc"]["accs"].append(vqc_res["accuracy"])
         results["quantum_vqc"]["f1s"].append(vqc_res["f1_score"])
 
-        # 2. Quantum Kernel
+        # 2. Quantum Kernel (no SMOTE — SVM handles imbalance via class_weight)
         print(f"\n--- Fold {fold_idx+1}: Quantum Kernel SVM ---")
-        kernel_res = train_quantum_kernel(fold_data=fold_pre)
+        kernel_res = train_quantum_kernel(fold_data=fold_raw)
         results["quantum_kernel"]["aucs"].append(kernel_res["auc_roc"])
         results["quantum_kernel"]["accs"].append(kernel_res["accuracy"])
         results["quantum_kernel"]["f1s"].append(kernel_res["f1_score"])
 
-        # 3. Classical MLP
+        # 3. Classical MLP (uses per-fold SMOTE'd data)
         print(f"\n--- Fold {fold_idx+1}: Classical MLP ---")
-        mlp_res = train_classical_mlp(fold_data=fold)
+        mlp_res = train_classical_mlp(fold_data=fold_smote)
         results["classical_mlp"]["aucs"].append(mlp_res["auc_roc"])
         results["classical_mlp"]["accs"].append(mlp_res["accuracy"])
         results["classical_mlp"]["f1s"].append(mlp_res["f1_score"])
 
-        # 4. Classical XGBoost
+        # 4. Classical XGBoost (no SMOTE — scale_pos_weight handles imbalance)
         print(f"\n--- Fold {fold_idx+1}: Classical XGBoost ---")
-        xgb_res = train_classical_xgb(fold_data=fold_pre)
+        xgb_res = train_classical_xgb(fold_data=fold_raw)
         results["classical_xgb"]["aucs"].append(xgb_res["auc_roc"])
         results["classical_xgb"]["accs"].append(xgb_res["accuracy"])
         results["classical_xgb"]["f1s"].append(xgb_res["f1_score"])
@@ -103,77 +117,66 @@ def run_learning_curves(data, fractions=(0.25, 0.50, 0.75, 1.0)):
     Train models at different data fractions to show quantum advantage
     at small sample sizes.
 
-    Uses a single 80/20 split of the holdout training data.
+    Subsamples real (pre-SMOTE) holdout-train rows, then for each subsample
+    REFITS MI selection / StandardScaler / PCA and applies SMOTE per subsample
+    so the small-data points genuinely reflect a model trained on only that
+    much data.
     """
     print(f"\n{'#'*70}")
     print(f"# LEARNING CURVES")
     print(f"{'#'*70}\n")
 
-    X_train_norm = data["X_train_norm"]
-    X_train = data["X_train"]
-    X_train_pca = data["X_train_pca"]
-    X_train_pre_smote = data["X_train_pre_smote"]
-    X_test_norm = data["X_test_norm"]
-    X_test = data["X_test"]
-    X_test_pca = data["X_test_pca"]
-    y_train = data["y_train"]
-    y_train_pre_smote = data["y_train_pre_smote"]
+    X_train_raw = data["X_train_raw"]      # variance-filtered, QT'd holdout-train
+    X_test_raw = data["X_test_raw"]
+    y_train_full = data["y_train_pre_smote"]
     y_test = data["y_test"]
+    n_features = data["n_features"]
 
     lc_results = {model: [] for model in ["quantum_vqc", "quantum_kernel", "classical_mlp", "classical_xgb"]}
+
+    rng = np.random.RandomState(42)
 
     for frac in fractions:
         print(f"\n{'='*60}")
         print(f"  Data fraction: {frac*100:.0f}%")
         print(f"{'='*60}")
 
-        # Subsample training data (maintain class ratio)
-        n_smote = int(len(X_train) * frac)
-        n_pre = int(len(X_train_pre_smote) * frac)
-
+        n = int(len(X_train_raw) * frac)
         if frac < 1.0:
-            rng = np.random.RandomState(42)
-            smote_idx = rng.choice(len(X_train), n_smote, replace=False)
-            pre_idx = rng.choice(len(X_train_pre_smote), n_pre, replace=False)
+            idx = rng.choice(len(X_train_raw), n, replace=False)
         else:
-            smote_idx = np.arange(len(X_train))
-            pre_idx = np.arange(len(X_train_pre_smote))
+            idx = np.arange(len(X_train_raw))
 
-        # Fold data for VQC/MLP (SMOTE'd)
-        fold_smote = {
-            "X_train_norm": X_train_norm[smote_idx],
-            "X_val_norm": X_test_norm,
-            "X_train": X_train[smote_idx],
-            "X_val": X_test,
-            "y_train": y_train[smote_idx],
-            "y_val": y_test,
-        }
-        # Fold data for kernel/XGB (pre-SMOTE)
-        fold_pre = {
-            "X_train_pca": X_train_pca[pre_idx],
-            "X_val_pca": X_test_pca,
-            "X_train": X_train_pre_smote[pre_idx],
-            "X_val": X_test,
-            "y_train": y_train_pre_smote[pre_idx],
-            "y_val": y_test,
-        }
+        # Refit feature engineering using ONLY the subsample
+        fold_raw = build_fold_features(
+            X_train_raw[idx], y_train_full[idx], X_test_raw,
+            n_features=n_features, n_pca=8, random_state=42,
+        )
+        fold_raw["y_val"] = y_test
 
-        # Train each model at this fraction
-        print(f"\n  [LC {frac*100:.0f}%] Quantum VQC (n={n_smote})...")
+        # Per-subsample SMOTE for VQC / MLP
+        X_aug, y_aug = apply_smote_to_fold(fold_raw["X_train"], fold_raw["y_train"], random_state=42)
+        X_aug_norm = X_aug / (np.linalg.norm(X_aug, axis=1, keepdims=True) + 1e-10)
+        fold_smote = dict(fold_raw)
+        fold_smote["X_train"] = X_aug
+        fold_smote["y_train"] = y_aug
+        fold_smote["X_train_norm"] = X_aug_norm
+
+        print(f"\n  [LC {frac*100:.0f}%] Quantum VQC (n={n} raw → {len(X_aug)} SMOTE'd)...")
         vqc = train_quantum_vqc(epochs=40, patience=10, fold_data=fold_smote)
-        lc_results["quantum_vqc"].append({"frac": frac, "n_train": n_smote, "auc": vqc["auc_roc"]})
+        lc_results["quantum_vqc"].append({"frac": frac, "n_train": n, "auc": vqc["auc_roc"]})
 
-        print(f"\n  [LC {frac*100:.0f}%] Quantum Kernel (n={n_pre})...")
-        kernel = train_quantum_kernel(fold_data=fold_pre)
-        lc_results["quantum_kernel"].append({"frac": frac, "n_train": n_pre, "auc": kernel["auc_roc"]})
+        print(f"\n  [LC {frac*100:.0f}%] Quantum Kernel (n={n})...")
+        kernel = train_quantum_kernel(fold_data=fold_raw)
+        lc_results["quantum_kernel"].append({"frac": frac, "n_train": n, "auc": kernel["auc_roc"]})
 
-        print(f"\n  [LC {frac*100:.0f}%] Classical MLP (n={n_smote})...")
+        print(f"\n  [LC {frac*100:.0f}%] Classical MLP (n={n} raw → {len(X_aug)} SMOTE'd)...")
         mlp = train_classical_mlp(epochs=60, patience=10, fold_data=fold_smote)
-        lc_results["classical_mlp"].append({"frac": frac, "n_train": n_smote, "auc": mlp["auc_roc"]})
+        lc_results["classical_mlp"].append({"frac": frac, "n_train": n, "auc": mlp["auc_roc"]})
 
-        print(f"\n  [LC {frac*100:.0f}%] Classical XGBoost (n={n_pre})...")
-        xgb = train_classical_xgb(fold_data=fold_pre)
-        lc_results["classical_xgb"].append({"frac": frac, "n_train": n_pre, "auc": xgb["auc_roc"]})
+        print(f"\n  [LC {frac*100:.0f}%] Classical XGBoost (n={n})...")
+        xgb = train_classical_xgb(fold_data=fold_raw)
+        lc_results["classical_xgb"].append({"frac": frac, "n_train": n, "auc": xgb["auc_roc"]})
 
     return lc_results
 

@@ -10,6 +10,13 @@ was driven by lucky feature selection, the SMOTE augmentation, or the specific
 train/test split, then changing those should change the outcome. If conclusions
 hold across both versions, they are more credible.
 
+> **Methodology update (May 2026):** the pipeline was overhauled to remove
+> feature-engineering leakage. ANOVA / scaler / PCA are now refit per CV fold
+> *and* per learning-curve subsample. See the
+> [Methodology fixes](#methodology-fixes-may-2026) section. All numbers in the
+> [Actual Results](#actual-results-from-resultsv05_comparison_resultsjson)
+> section are from the corrected run.
+
 ---
 
 ## Same as v04
@@ -71,62 +78,95 @@ making the classical baseline a fairer opponent for the quantum models.
 
 ## Actual Results (from `results/v05_comparison_results.json`)
 
+Results below are from the corrected pipeline (per-fold and per-subsample
+feature engineering). Total runtime: **~59 minutes**.
+
 ### Holdout (54 test samples)
 
-| Model | Accuracy | AUC | F1(SSc) | F1(Healthy) | Train time |
-|---|---|---|---|---|---|
-| Quantum VQC | 79.6% | 0.791 | 0.867 | 0.560 | 395s |
-| Quantum Kernel | 83.3% | 0.859 | 0.903 | 0.400 | 196s |
-| Classical MLP | 87.0% | 0.962 | 0.918 | 0.696 | <1s |
-| **Classical XGBoost** | **96.3%** | **0.957** | **0.978** | **0.875** | <1s |
+| Model | Accuracy | AUC | F1(SSc) | F1(Healthy) |
+|---|---|---|---|---|
+| Quantum VQC | 79.6% | 0.897 | 0.864 | 0.593 |
+| Quantum Kernel | 83.3% | 0.859 | 0.903 | 0.400 |
+| **Classical MLP** | **96.3%** | **0.967** | 0.978 | **0.889** |
+| Classical XGBoost | 96.3% | 0.957 | 0.978 | 0.875 |
 
 ### 5-Fold Cross-Validation AUC
 
 | Model | Mean AUC | Std | Min | Max |
 |---|---|---|---|---|
-| Quantum VQC | 0.853 | 0.031 | 0.801 | 0.892 |
-| Quantum Kernel | 0.840 | 0.056 | 0.773 | 0.940 |
-| Classical MLP | **0.910** | 0.055 | 0.847 | 1.000 |
-| Classical XGBoost | 0.874 | 0.054 | 0.793 | 0.944 |
+| Quantum VQC | 0.832 | 0.081 | 0.681 | 0.905 |
+| Quantum Kernel | 0.693 | 0.111 | 0.505 | 0.801 |
+| **Classical MLP** | **0.891** | 0.067 | 0.769 | 0.972 |
+| Classical XGBoost | 0.825 | 0.067 | 0.734 | 0.889 |
 
-### Learning Curves (AUC at data fractions)
+### Learning Curves (AUC at data fractions; ANOVA + scaler + PCA refit per subsample)
 
 | Model | 25% | 50% | 75% | 100% |
 |---|---|---|---|---|
-| Quantum VQC | 0.758 | 0.842 | 0.929 | 0.856 |
-| Quantum Kernel | 0.704 | 0.745 | 0.761 | 0.859 |
-| Classical MLP | 0.867 | 0.951 | 0.902 | 0.973 |
-| Classical XGBoost | 0.500 | 0.857 | 0.878 | 0.957 |
+| Quantum VQC | 0.731 | 0.712 | 0.834 | 0.897 |
+| Quantum Kernel | 0.435 | 0.573 | 0.785 | 0.859 |
+| Classical MLP | 0.633 | 0.834 | 0.848 | 0.967 |
+| Classical XGBoost | 0.500 | 0.741 | 0.722 | 0.962 |
 
 ### Statistical Tests (paired t-test on 5 CV fold AUCs)
 
-All comparisons: **not significant** (all p > 0.10). The dataset is too small for
-t-tests to reach p < 0.05 with only 5 fold pairs.
+| Comparison | t-statistic | p-value | Significant? |
+|---|---|---|---|
+| **VQC vs MLP** | -3.51 | **0.0247** | **Yes** (MLP wins) |
+| VQC vs XGBoost | 0.17 | 0.8718 | No |
+| Kernel vs MLP | -2.56 | 0.0626 | No |
+| Kernel vs XGBoost | -1.67 | 0.1693 | No |
+| Best Quantum vs Best Classical | -1.54 | 0.1981 | No |
+
+The MLP significantly outperforms the VQC on a per-fold paired test — in v05's
+honest setup, the parameter-light classical baseline is the better model.
 
 ---
 
-## v04 vs v05 Side-by-Side
+## Methodology fixes (May 2026)
 
-| | v04 CV AUC | v05 CV AUC | Change |
-|---|---|---|---|
-| Quantum VQC | **0.998** ± 0.004 | 0.853 ± 0.031 | -0.145 |
-| Quantum Kernel | 0.891 ± 0.088 | 0.840 ± 0.056 | -0.051 |
-| Classical MLP | 0.994 ± 0.009 | **0.910** ± 0.055 | -0.084 |
-| Classical XGBoost | 0.921 ± 0.027 | 0.874 ± 0.054 | -0.047 |
+The earlier v05 pipeline already dropped SMOTE (good) but still leaked
+feature-engineering choices through the CV folds. The current code fixes:
 
-**The dramatic drop in v04's VQC CV AUC (0.998 → 0.853) is the key finding.**
-It confirms that v04's near-perfect quantum CV score was an artefact of SMOTE
-leakage, not genuine quantum capability. With real samples only (v05), classical
-models — especially XGBoost and MLP — outperform both quantum approaches on
-every metric.
+- **Feature-engineering leakage in CV** — ANOVA F-test selection,
+  `StandardScaler`, PCA, and the [0, π] `MinMaxScaler` were fit on the full
+  training set and then applied to each fold. Now refit on the training side of
+  each fold via `build_fold_features()`.
+- **Feature-engineering leakage in learning curves** — same problem at every
+  data-fraction subsample. Now refit on each subsample.
+
+These fixes mostly affected CV AUC variance and small-data learning-curve
+points; the overall ranking (MLP > XGBoost > VQC > Kernel) is unchanged from
+the pre-fix v05.
+
+---
+
+## v04 vs v05 Side-by-Side (post-fix)
+
+| | v04 CV AUC (post-fix) | v05 CV AUC (post-fix) |
+|---|---|---|
+| Quantum VQC | **0.983** ± 0.014 | 0.832 ± 0.081 |
+| Quantum Kernel | 0.891 ± 0.088 | 0.693 ± 0.111 |
+| Classical MLP | 0.975 ± 0.028 | **0.891** ± 0.067 |
+| Classical XGBoost | 0.920 ± 0.024 | 0.825 ± 0.067 |
+
+The v04 numbers are higher across the board because v04 keeps SMOTE (per-fold)
+and uses 64 MI-selected features with 6-qubit circuits. v05 deliberately drops
+SMOTE and uses only 16 ANOVA-selected features with 4-qubit circuits, so it is
+a harder setting for every model. Within each version the model rankings are:
+
+- **v04 (post-fix)**: VQC ≈ MLP > XGBoost > Kernel
+- **v05 (post-fix)**: MLP > XGBoost > VQC > Kernel
 
 ### What This Means
 
-- **Classical XGBoost is the best model** on this dataset under honest conditions
-- **Quantum models are 400–1300× slower** to train with no compensating accuracy
-- **No result reached statistical significance** in either version, reflecting the
-  small sample size (n=266 total, n=54 test)
-- v04's quantum "advantage" in CV was a **SMOTE artefact**, not a real effect
+- **In v05's honest, no-SMOTE, low-dimensional setting, classical MLP is the
+  best model**, significantly beating the VQC (paired t-test p=0.025).
+- **Quantum models are 400–1300× slower** to train with no compensating
+  accuracy at this feature count.
+- v04's previous near-perfect 0.998 VQC CV AUC was a SMOTE-before-CV leakage
+  artefact. With per-fold SMOTE in v04 it drops to a still-strong but realistic
+  0.983; with no SMOTE at all in v05 it drops to 0.832.
 
 ---
 

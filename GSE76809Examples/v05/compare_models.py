@@ -18,7 +18,7 @@ import numpy as np
 from scipy import stats
 
 sys.path.insert(0, str(Path(__file__).parent))
-from preprocess_gse76809 import preprocess
+from preprocess_gse76809 import preprocess, build_fold_features
 from model_quantum_vqc import train_quantum_vqc
 from model_quantum_kernel import train_quantum_kernel
 from model_classical_mlp import train_classical_mlp
@@ -88,14 +88,13 @@ def run_learning_curves(data, fractions=(0.25, 0.50, 0.75, 1.0)):
     print(f"# LEARNING CURVES")
     print(f"{'#'*70}\n")
 
-    X_train_norm = data["X_train_norm"]
-    X_train = data["X_train"]
-    X_train_pca = data["X_train_pca"]
-    X_test_norm = data["X_test_norm"]
-    X_test = data["X_test"]
-    X_test_pca = data["X_test_pca"]
+    X_train_raw = data["X_train_raw"]      # variance-filtered, QT'd holdout-train
+    X_test_raw = data["X_test_raw"]
     y_train = data["y_train"]
     y_test = data["y_test"]
+    n_features = data["n_features"]
+    n_pca = data["n_pca"]
+    random_state = data["random_state"]
 
     lc_results = {model: [] for model in ["quantum_vqc", "quantum_kernel", "classical_mlp", "classical_xgb"]}
 
@@ -104,24 +103,20 @@ def run_learning_curves(data, fractions=(0.25, 0.50, 0.75, 1.0)):
         print(f"  Data fraction: {frac*100:.0f}%")
         print(f"{'='*60}")
 
-        n = int(len(X_train) * frac)
+        n = int(len(X_train_raw) * frac)
 
         if frac < 1.0:
-            rng = np.random.RandomState(2024)
-            idx = rng.choice(len(X_train), n, replace=False)
+            rng = np.random.RandomState(random_state)
+            idx = rng.choice(len(X_train_raw), n, replace=False)
         else:
-            idx = np.arange(len(X_train))
+            idx = np.arange(len(X_train_raw))
 
-        fold = {
-            "X_train_norm": X_train_norm[idx],
-            "X_val_norm": X_test_norm,
-            "X_train": X_train[idx],
-            "X_val": X_test,
-            "X_train_pca": X_train_pca[idx],
-            "X_val_pca": X_test_pca,
-            "y_train": y_train[idx],
-            "y_val": y_test,
-        }
+        # Refit ANOVA / scaler / PCA on the subsample only
+        fold = build_fold_features(
+            X_train_raw[idx], y_train[idx], X_test_raw,
+            n_features=n_features, n_pca=n_pca, random_state=random_state,
+        )
+        fold["y_val"] = y_test
 
         print(f"\n  [LC {frac*100:.0f}%] Quantum VQC (n={n})...")
         vqc = train_quantum_vqc(epochs=40, patience=10, fold_data=fold)
