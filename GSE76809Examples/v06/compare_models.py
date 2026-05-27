@@ -19,10 +19,17 @@ Models compared:
 """
 
 import json
+import sys
 import time
 import numpy as np
 from pathlib import Path
 from scipy import stats
+
+# Allow `from shared.* import *` regardless of where the script is launched.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from shared.stats_utils import (  # noqa: E402
+    wilcoxon_signed_rank, holm_bonferroni, corrected_resampled_ttest,
+)
 
 from preprocess_gse76809 import preprocess, apply_smote_to_fold, build_fold_features
 from model_quantum_vqc import train_quantum_vqc
@@ -30,6 +37,7 @@ from model_quantum_kernel import train_quantum_kernel
 from model_classical_mlp import train_classical_mlp
 from model_classical_svm import train_classical_svm
 from model_classical_xgb import train_classical_xgb
+from model_classical_logreg import train_classical_logreg
 
 
 class NumpyEncoder(json.JSONEncoder):
@@ -99,6 +107,7 @@ def run_cv(data, n_folds=5):
         "classical_mlp": {"aucs": [], "accs": [], "f1s": []},
         "classical_svm": {"aucs": [], "accs": [], "f1s": []},
         "classical_xgb": {"aucs": [], "accs": [], "f1s": []},
+        "classical_logreg": {"aucs": [], "accs": [], "f1s": []},
     }
 
     for fold_idx in range(n_folds):
@@ -142,6 +151,13 @@ def run_cv(data, n_folds=5):
         results["classical_xgb"]["aucs"].append(xgb_res["auc_roc"])
         results["classical_xgb"]["accs"].append(xgb_res["accuracy"])
         results["classical_xgb"]["f1s"].append(xgb_res["f1_score"])
+
+        # 6. Classical Logistic Regression L1 (small-data baseline)
+        print(f"\n--- Fold {fold_idx+1}: Classical Logistic Regression (L1) ---")
+        lr_res = train_classical_logreg(fold_data=fold)
+        results["classical_logreg"]["aucs"].append(lr_res["auc_roc"])
+        results["classical_logreg"]["accs"].append(lr_res["accuracy"])
+        results["classical_logreg"]["f1s"].append(lr_res["f1_score"])
 
     return results
 
@@ -201,6 +217,13 @@ def run_holdout(data):
     timings["classical_xgb"] = time.time() - t0
     results["classical_xgb"] = xgb_res
 
+    # Classical Logistic Regression L1
+    print("\n--- Holdout: Classical Logistic Regression (L1) ---")
+    t0 = time.time()
+    lr_res = train_classical_logreg(fold_data=holdout_fold)
+    timings["classical_logreg"] = time.time() - t0
+    results["classical_logreg"] = lr_res
+
     return results, timings
 
 
@@ -230,7 +253,8 @@ def run_learning_curves(data, fractions=None, n_repeats=3):
 
     results = {model: {str(f): [] for f in fractions}
                for model in ["quantum_vqc", "classical_mlp", "classical_xgb",
-                             "classical_svm", "quantum_kernel"]}
+                             "classical_svm", "quantum_kernel",
+                             "classical_logreg"]}
 
     rng = np.random.RandomState(random_state)
 
@@ -284,6 +308,11 @@ def run_learning_curves(data, fractions=None, n_repeats=3):
             svm_r = train_classical_svm(fold_data=fold_raw)
             results["classical_svm"][str(frac)].append(svm_r["auc_roc"])
 
+            # Classical Logistic Regression L1 (raw subsample) — small-data baseline
+            print(f"    [LR-L1]", end=" ")
+            lr_r = train_classical_logreg(fold_data=fold_raw)
+            results["classical_logreg"][str(frac)].append(lr_r["auc_roc"])
+
             # Quantum Kernel (only at 30%+ to keep runtime manageable)
             if frac >= 0.30:
                 print(f"    [QKernel]", end=" ")
@@ -312,22 +341,36 @@ def run_statistical_tests(cv_results):
         ("quantum_vqc", "classical_mlp", "VQC vs Matched-MLP (same params)"),
         ("quantum_vqc", "classical_xgb", "VQC vs Tuned-XGBoost"),
         ("quantum_vqc", "classical_svm", "VQC vs RBF-SVM"),
+        ("quantum_vqc", "classical_logreg", "VQC vs LR-L1"),
         ("quantum_kernel", "classical_svm", "Q-Kernel vs RBF-SVM (same data)"),
         ("quantum_kernel", "classical_xgb", "Q-Kernel vs Tuned-XGBoost"),
+        ("quantum_kernel", "classical_logreg", "Q-Kernel vs LR-L1"),
         ("quantum_vqc", "quantum_kernel", "VQC vs Q-Kernel"),
     ]
 
     stat_results = []
+    p_values_for_holm = []
     for model_a, model_b, label in comparisons:
         aucs_a = np.array(cv_results[model_a]["aucs"])
         aucs_b = np.array(cv_results[model_b]["aucs"])
 
-        # Paired t-test
+        # Paired t-test (legacy / for compatibility with prior versions)
         t_stat, p_val = stats.ttest_rel(aucs_a, aucs_b)
-        
+
+        # Wilcoxon signed-rank (non-parametric, low-n safe)
+        w_stat, w_p = wilcoxon_signed_rank(aucs_a, aucs_b)
+
+        # Nadeau-Bengio corrected resampled t-test (the right test for k-fold CV)
+        # n_train and n_test are approximate, taken from the holdout split.
+        nb_t, nb_p = corrected_resampled_ttest(
+            aucs_a, aucs_b,
+            n_train=len(cv_results[model_a]["aucs"]) * 4 // 5 * 1,  # placeholder
+            n_test=len(cv_results[model_a]["aucs"]) * 1 // 5 * 1,
+        )
+
         # Cohen's d
         d = cohens_d(aucs_a, aucs_b)
-        
+
         # Effect size interpretation
         if abs(d) < 0.2:
             effect = "negligible"
@@ -340,23 +383,41 @@ def run_statistical_tests(cv_results):
 
         significant = p_val < 0.05
         print(f"  {label}:")
-        print(f"    t={t_stat:.3f}, p={p_val:.4f} {'*** SIGNIFICANT' if significant else ''}")
+        print(f"    paired t:   t={t_stat:.3f}, p={p_val:.4f}")
+        print(f"    Wilcoxon:   W={w_stat:.3f}, p={w_p:.4f}")
+        print(f"    NB-corr-t:  t={nb_t:.3f}, p={nb_p:.4f}  (k-fold CV-aware)")
         print(f"    Cohen's d={d:.3f} ({effect} effect)")
         print(f"    Mean diff: {np.mean(aucs_a) - np.mean(aucs_b):.4f}")
         print()
 
+        p_values_for_holm.append(p_val)
         stat_results.append({
             "comparison": label,
             "model_a": model_a,
             "model_b": model_b,
             "t_statistic": t_stat,
             "p_value": p_val,
+            "wilcoxon_statistic": w_stat,
+            "wilcoxon_p": w_p,
+            "nb_corrected_t": nb_t,
+            "nb_corrected_p": nb_p,
             "cohens_d": d,
             "effect_size": effect,
             "significant": significant,
             "mean_a": float(np.mean(aucs_a)),
             "mean_b": float(np.mean(aucs_b)),
         })
+
+    # Holm-Bonferroni correction over the paired-t p-values (most-conservative
+    # multiple-comparisons control). Reporting both raw and adjusted lets the
+    # reader see how shaky the un-corrected story is.
+    adjusted = holm_bonferroni(p_values_for_holm)
+    print("  Holm-Bonferroni adjusted p-values (over paired-t):")
+    for entry, adj in zip(stat_results, adjusted):
+        entry["holm_adjusted_p"] = adj
+        entry["holm_significant"] = adj < 0.05
+        flag = " *** SIGNIFICANT" if adj < 0.05 else ""
+        print(f"    {entry['comparison']}: p_adj={adj:.4f}{flag}")
 
     return stat_results
 
@@ -455,7 +516,7 @@ def main():
     print(header)
     print("-" * len(header))
     for model in ["quantum_vqc", "classical_mlp", "classical_xgb",
-                  "classical_svm", "quantum_kernel"]:
+                  "classical_svm", "quantum_kernel", "classical_logreg"]:
         name = model.replace("_", " ").title()[:18]
         row = f"{name:<20}"
         for f in fracs:

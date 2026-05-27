@@ -129,11 +129,19 @@ class DataReuploadingVQC(nn.Module):
 
 
 def train_quantum_vqc(fold_data, epochs=80, batch_size=24, lr=0.005,
-                      patience=15, use_smote=True, random_state=2026):
+                      patience=15, use_smote=True, random_state=2026,
+                      init_seed=None):
     """
     Train the data reuploading VQC on a single fold.
-    
+
     Per-fold SMOTE is applied here (correct methodology).
+
+    ``init_seed`` controls the random initialisation of the VQC parameters
+    (encoding + variational weights). It is *independent* of ``random_state``
+    (which governs SMOTE and shuffling). Sweeping ``init_seed`` over several
+    values per fold gives an honest (seed x fold) variance estimate — the
+    plain (fold-only) variance reported in v06's results understates the true
+    spread because VQC initialisation is itself stochastic.
     """
     X_train = fold_data["X_train"]
     X_val = fold_data["X_val"]
@@ -149,7 +157,9 @@ def train_quantum_vqc(fold_data, epochs=80, batch_size=24, lr=0.005,
     y_train_t = torch.FloatTensor(y_train)
     X_val_t = torch.FloatTensor(X_val)
 
-    # Initialize model
+    # Initialize model under a controlled torch seed if requested
+    if init_seed is not None:
+        torch.manual_seed(int(init_seed))
     model = DataReuploadingVQC(n_features=N_FEATURES)
     print(f"    VQC parameters: {model.count_parameters()}")
 

@@ -83,6 +83,16 @@ def build_fold_features(X_train_raw, y_train, X_val_raw, n_features=16,
     Refitting these inside every CV fold prevents validation rows from
     influencing which features and PCA components are chosen.
     """
+    # Defensive leakage check: every transformer below must be fit on
+    # X_train_raw alone. Asserting the input shapes here makes accidental
+    # "fit on concatenated train+val" bugs fail loudly.
+    assert X_train_raw.ndim == 2 and X_val_raw.ndim == 2, \
+        "build_fold_features expects 2-D matrices"
+    assert X_train_raw.shape[1] == X_val_raw.shape[1], \
+        "feature count mismatch between train and val raw matrices"
+    assert len(y_train) == len(X_train_raw), \
+        "y_train length must equal X_train_raw rows"
+
     f_scores, _ = f_classif(X_train_raw, y_train)
     f_scores = np.nan_to_num(f_scores, nan=0.0)
     top_idx = np.argsort(f_scores)[-n_features:]
