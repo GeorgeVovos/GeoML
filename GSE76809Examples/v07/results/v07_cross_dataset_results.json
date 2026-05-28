@@ -1,0 +1,147 @@
+{
+  "metadata": {
+    "version": "v07",
+    "purpose": "cross-dataset replication of v06",
+    "datasets": [
+      "GSE76809"
+    ],
+    "seed": 2026,
+    "total_runtime_minutes": 116.8122903585434
+  },
+  "datasets": {
+    "GSE76809": {
+      "cv": {
+        "quantum_vqc": {
+          "aucs": [
+            0.7432432432432433,
+            0.8738738738738738,
+            0.8564814814814814,
+            0.9537037037037037,
+            0.7083333333333334
+          ],
+          "mean_auc": 0.8271271271271271,
+          "std_auc": 0.08968504625429898
+        },
+        "classical_mlp": {
+          "aucs": [
+            0.7252252252252253,
+            0.7995495495495495,
+            0.8171296296296297,
+            0.9027777777777778,
+            0.6898148148148149
+          ],
+          "mean_auc": 0.7868993993993995,
+          "std_auc": 0.07447256141455647
+        },
+        "classical_xgb": {
+          "aucs": [
+            0.8108108108108109,
+            0.9909909909909911,
+            0.9768518518518519,
+            0.9722222222222223,
+            0.7453703703703703
+          ],
+          "mean_auc": 0.8992492492492493,
+          "std_auc": 0.1012559456540408
+        },
+        "classical_svm": {
+          "aucs": [
+            0.7297297297297297,
+            0.9324324324324325,
+            0.888888888888889,
+            0.875,
+            0.6342592592592593
+          ],
+          "mean_auc": 0.812062062062062,
+          "std_auc": 0.11202233799298524
+        },
+        "classical_logreg": {
+          "aucs": [
+            0.7747747747747747,
+            0.9324324324324325,
+            0.8981481481481481,
+            0.9166666666666666,
+            0.6388888888888888
+          ],
+          "mean_auc": 0.8321821821821821,
+          "std_auc": 0.11153219904321537
+        },
+        "quantum_kernel": {
+          "aucs": [
+            0.44594594594594594,
+            0.6171171171171171,
+            0.8009259259259259,
+            0.5092592592592593,
+            0.47685185185185186
+          ],
+          "mean_auc": 0.5700200200200201,
+          "std_auc": 0.12907534807435364
+        }
+      },
+      "stats_vs_lr_l1": [
+        {
+          "model_a": "quantum_vqc",
+          "model_b": "classical_logreg",
+          "mean_a": 0.8271271271271271,
+          "mean_b": 0.8321821821821821,
+          "wilcoxon_p": 1.0,
+          "nb_corrected_p": 0.897999361871022,
+          "cohens_d": -0.04467769984656138,
+          "effect_size": "negligible",
+          "holm_adjusted_p": 0.897999361871022,
+          "holm_significant": false
+        },
+        {
+          "model_a": "classical_mlp",
+          "model_b": "classical_logreg",
+          "mean_a": 0.7868993993993995,
+          "mean_b": 0.8321821821821821,
+          "wilcoxon_p": 0.3125,
+          "nb_corrected_p": 0.3844767762453136,
+          "cohens_d": -0.4271011182496845,
+          "effect_size": "small",
+          "holm_adjusted_p": 0.7689535524906272,
+          "holm_significant": false
+        },
+        {
+          "model_a": "classical_xgb",
+          "model_b": "classical_logreg",
+          "mean_a": 0.8992492492492493,
+          "mean_b": 0.8321821821821821,
+          "wilcoxon_p": 0.0625,
+          "nb_corrected_p": 0.019994762710277447,
+          "cohens_d": 0.5631589935100729,
+          "effect_size": "medium",
+          "holm_adjusted_p": 0.09997381355138724,
+          "holm_significant": false
+        },
+        {
+          "model_a": "classical_svm",
+          "model_b": "classical_logreg",
+          "mean_a": 0.812062062062062,
+          "mean_b": 0.8321821821821821,
+          "wilcoxon_p": 0.125,
+          "nb_corrected_p": 0.23475914007554977,
+          "cohens_d": -0.16099820211462187,
+          "effect_size": "negligible",
+          "holm_adjusted_p": 0.7042774202266493,
+          "holm_significant": false
+        },
+        {
+          "model_a": "quantum_kernel",
+          "model_b": "classical_logreg",
+          "mean_a": 0.5700200200200201,
+          "mean_b": 0.8321821821821821,
+          "wilcoxon_p": 0.0625,
+          "nb_corrected_p": 0.03777565177228204,
+          "cohens_d": -1.9439470246014694,
+          "effect_size": "large",
+          "holm_adjusted_p": 0.15110260708912815,
+          "holm_significant": false
+        }
+      ],
+      "n_samples": 266,
+      "n_features": 16
+    }
+  }
+}
