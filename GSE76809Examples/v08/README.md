@@ -170,7 +170,7 @@ survive** this more rigorous evaluation. Under controlled 1:1 class
 balance, 20 subsample seeds, 3 VQC init seeds, and a fixed test set, the
 data-reuploading VQC is consistently outperformed by parameter-matched
 MLP, XGBoost, and even simple LR-L1. The result is an honest negative:
-on GSE76809, there is no evidence that the 6-qubit VQC offers a
+on GSE76809, there is no evidence that the 4-qubit VQC offers a
 sample-efficiency benefit over well-tuned classical methods.
 
 ### Limitations
@@ -181,5 +181,5 @@ sample-efficiency benefit over well-tuned classical methods.
 - Quantum kernel was not evaluated due to runtime constraints.
 - All quantum simulation is noiseless (statevector). Real-device noise
   would likely widen VQC variance further.
-- The VQC architecture (6 qubits, data-reuploading, 80 epochs) was not
+- The VQC architecture (4 qubits, data-reuploading, 80 epochs) was not
   tuned for this specific sample-efficiency task.

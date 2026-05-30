@@ -13,16 +13,23 @@ without changing any model hyperparameters.
 
 ## Datasets
 
-| GSE       | n total | platform / tissue                 | role in v07         |
-|-----------|---------|-----------------------------------|---------------------|
-| GSE76809  | 266     | GPL6480, multi-tissue SSc         | reference (= v06)   |
-| GSE9285   |  75     | Agilent, skin biopsies            | independent #1      |
-| GSE58095  | 102     | Illumina HT-12 V4, skin           | independent #2      |
-| GSE45536  | 123     | Affymetrix HG-U133+2, blood       | independent #3      |
+| GSE       | n total | platform / tissue                 | role in v07         | status in current run |
+|-----------|---------|-----------------------------------|---------------------|-----------------------|
+| GSE76809  | 266     | GPL6480, multi-tissue SSc         | reference (= v06)   | ✅ completed          |
+| GSE9285   |  75     | Agilent, skin biopsies            | independent #1      | ⬜ not yet run        |
+| GSE58095  | 102     | Illumina HT-12 V4, skin           | independent #2      | ⬜ not yet run        |
+| GSE45536  | 123     | Affymetrix HG-U133+2, blood       | independent #3      | ⬜ not yet run        |
 
 The three "independent" datasets are deliberately *smaller and from
 different platforms* — exactly the regime where a small-data QML advantage
 should be most visible.
+
+> ⚠️ **Current status:** `results/v07_cross_dataset_results.json` contains
+> **only GSE76809** so far. The three independent datasets have not been run
+> yet (their labelers in `dataset_loaders.py` are still placeholders —
+> see *Known limitations*). The cross-dataset replication question below
+> therefore **cannot be answered yet**; what we have is a single-dataset
+> sanity check that the v06 pipeline still reproduces on its reference data.
 
 ## Methodology
 
@@ -47,8 +54,10 @@ cd GSE76809Examples\v07
 python compare_models.py
 ```
 
-Estimated runtime: **~30 min per dataset** (no LC, no holdout), so
-**~2 hours total** for 4 datasets on CPU.
+Estimated runtime: the actual GSE76809 run took **~117 min** on CPU
+(see `total_runtime_minutes` in the results JSON), so budget closer to
+**~2 hours per dataset** (≈8 hours for all 4), not the earlier ~30 min
+guess. The VQC's 5-fold CV dominates this cost.
 
 ## Files
 
@@ -76,6 +85,39 @@ The replication question is:
 
 If yes on **2+ datasets**, the small-data quantum-advantage claim is
 supported. If no, the effect is at best dataset-specific to GSE76809.
+
+## Results so far (GSE76809 only)
+
+5-fold stratified CV, ANOVA top-16 features, n=266. Mean ± std AUC:
+
+| Model              | Mean AUC | Std    | vs LR-L1 (Cohen's d) | Holm p | Significant? |
+|--------------------|----------|--------|----------------------|--------|--------------|
+| classical_xgb      | 0.899    | 0.101  | +0.563 (medium)      | 0.100  | no           |
+| **classical_logreg (LR-L1)** | **0.832** | **0.112** | baseline | — | — |
+| quantum_vqc        | 0.827    | 0.090  | −0.045 (negligible)  | 0.898  | no           |
+| classical_svm      | 0.812    | 0.112  | −0.161 (negligible)  | 0.704  | no           |
+| classical_mlp      | 0.787    | 0.074  | −0.427 (small)       | 0.769  | no           |
+| quantum_kernel     | 0.570    | 0.129  | −1.944 (large)       | 0.151  | no           |
+
+**Findings:**
+
+- **No quantum advantage on the reference dataset.** XGBoost is the
+  strongest model (0.899). The VQC (0.827) is essentially tied with the
+  LR-L1 baseline (0.832) — a *negligible negative* effect (d = −0.045)
+  that is not significant after Holm correction.
+- **The quantum kernel collapses** to 0.570 AUC (large negative effect,
+  d = −1.94), well below every classical baseline.
+- After Holm correction across the five comparisons, **no model differs
+  significantly** from LR-L1 on this dataset (smallest Holm p = 0.10 for
+  XGBoost).
+- Because the three independent datasets have **not been run**, the
+  cross-dataset replication question is **still open**. On the evidence
+  available, the v06 "graceful VQC" signal does **not** translate into a
+  CV-AUC advantage even on GSE76809 itself, so the small-data
+  quantum-advantage claim is currently **unsupported**.
+
+**Next step:** label and run GSE9285 / GSE58095 / GSE45536, then revisit
+the replication verdict above.
 
 ## Known limitations / TODO
 

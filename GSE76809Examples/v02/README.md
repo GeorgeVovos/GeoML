@@ -187,7 +187,7 @@ Linear(100 → 32) → ReLU → Linear(32 → 8) → Tanh
 └──────────────────────────────────────────────────┘
     │
     ▼
-Linear(8 → 1) → Sigmoid
+Linear(8 → 16) → ReLU → Linear(16 → 1) → Sigmoid
     │
     ▼
 P(SSc)
@@ -205,8 +205,8 @@ P(SSc)
 | Layers | 3 |
 | Rotations per qubit per layer | 3 (RY + RZ + RX) |
 | Quantum parameters | 72 (3 layers × 8 qubits × 3 rotations) |
-| Pre-net parameters | 3,240 (100→32 + 32→8) |
-| Post-net parameters | 9 (8→1) |
+| Pre-net parameters | 3,496 (Linear 100→32 = 3,232; Linear 32→8 = 264, incl. biases) |
+| Post-net parameters | 161 (Linear 8→16 = 144; Linear 16→1 = 17, incl. biases) |
 | Total parameters | 3,729 |
 | Optimizer | Adam (lr=0.008) + cosine annealing |
 | Early stopping | Patience=10 on AUC-ROC |

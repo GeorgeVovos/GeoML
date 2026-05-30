@@ -38,7 +38,12 @@ operative factor and should be reported as such.
 ```powershell
 cd GSE76809Examples\v09
 python compare_encodings.py                       # all four encodings
+python compare_encodings.py --encodings angle iqp # subset
 ```
+
+Runtime: the actual full 4-encoding run took **~386 min (~6.4 h)** on CPU
+(`runtime_minutes` in the results JSON), i.e. ~96 min per encoding for the
+5-fold CV — well above the earlier ~30 min/encoding guess.
 
 ## Results: Encoding Ablation (v09)
 
@@ -65,11 +70,6 @@ python compare_encodings.py                       # all four encodings
 **Conclusion:**
 
 - Quantum VQC with data reuploading encoding is competitive with strong classical baselines, but does not surpass the best-tuned classical models on this dataset. The encoding choice is the key driver of quantum performance improvements in v06/v09.
-python compare_encodings.py --encodings angle iqp # subset
-```
-
-Estimated runtime: **~30 min per encoding** (5-fold CV, no holdout, no
-learning curve), so ~2 hours total on CPU.
 
 ## Files
 
