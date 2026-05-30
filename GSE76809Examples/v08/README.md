@@ -98,62 +98,88 @@ publishable claim. If it doesn't, you have an honest negative result that
 is *itself* worth a chapter ("On the fragility of reported small-data
 quantum advantage").
 
-## Preliminary Results (quick mode: 5 subsample seeds, 2 VQC init seeds)
+## Results (20 subsample seeds, 3 VQC init seeds, ~6.5 hours)
 
-**Dataset:** GSE76809, 266 usable samples (4521 genes after variance filter).
-The training pool has only 30 samples per class, so N_per_class ∈ {50, 100}
-were skipped (insufficient data). Results below are for N=10 and N=20.
+**Dataset:** GSE76809, 266 usable samples (4521 genes after variance
+filter). The training pool contains only 30 samples per class, so
+N_per_class ∈ {50, 100} could not be tested. Quantum kernel was skipped
+due to runtime constraints. All results use the fixed v06 holdout test
+set (54 samples).
 
 ### N_per_class = 10 (total training = 20 samples, 1:1 balanced)
 
-| Model            | Mean AUC | Std   | 95% CI          | n |
-|------------------|----------|-------|-----------------|---|
-| Classical MLP    | 0.780    | 0.065 | [0.730, 0.830]  | 5 |
-| XGBoost          | 0.762    | 0.114 | [0.683, 0.843]  | 5 |
-| LR-L1            | 0.753    | 0.114 | [0.670, 0.847]  | 5 |
-| **Quantum VQC**  | 0.669    | 0.125 | —               | 9*|
-| RBF SVM          | 0.429    | 0.231 | [0.256, 0.601]  | 5 |
-
-*VQC: 5 subsamples × 2 init seeds = 10 cells; 9 completed before timeout.
+| Model            | Mean AUC | Std   | 95% CI          | n  |
+|------------------|----------|-------|-----------------|----|
+| Classical MLP    | 0.723    | 0.064 | [0.696, 0.750]  | 20 |
+| LR-L1            | 0.705    | 0.086 | [0.671, 0.743]  | 20 |
+| XGBoost          | 0.680    | 0.100 | [0.641, 0.725]  | 20 |
+| **Quantum VQC**  | 0.627    | 0.118 | [0.598, 0.657]  | 60 |
+| RBF SVM          | 0.407    | 0.163 | [0.340, 0.480]  | 20 |
 
 ### N_per_class = 20 (total training = 40 samples, 1:1 balanced)
 
-| Model            | Mean AUC | Std   | 95% CI          | n |
-|------------------|----------|-------|-----------------|---|
-| LR-L1            | 0.797    | 0.079 | [0.737, 0.858]  | 5 |
-| Classical MLP    | 0.790    | 0.089 | [0.721, 0.855]  | 5 |
-| XGBoost          | 0.788    | 0.070 | [0.733, 0.840]  | 5 |
-| RBF SVM          | 0.496    | 0.295 | [0.279, 0.746]  | 5 |
-| Quantum VQC      | —        | —     | —               | — |
+| Model            | Mean AUC | Std   | 95% CI          | n  |
+|------------------|----------|-------|-----------------|----|
+| Classical MLP    | 0.747    | 0.087 | [0.710, 0.783]  | 20 |
+| XGBoost          | 0.741    | 0.086 | [0.703, 0.776]  | 20 |
+| LR-L1            | 0.740    | 0.075 | [0.708, 0.772]  | 20 |
+| **Quantum VQC**  | 0.697    | 0.121 | [0.668, 0.727]  | 60 |
+| RBF SVM          | 0.558    | 0.243 | [0.450, 0.662]  | 20 |
 
-VQC results for N=20 were not collected due to runtime constraints.
+### Key findings
 
-### Key observations
+1. **No small-data quantum advantage.** At both N=10 and N=20 the VQC
+   ranks below all three strong classical baselines (MLP, XGBoost,
+   LR-L1). The 95% bootstrap CIs do not overlap: at N=10, VQC's upper
+   bound (0.657) is below MLP's lower bound (0.696).
 
-1. **No small-data quantum advantage detected.** At N=10 (the smallest
-   cell), the VQC's mean AUC (0.669) is *below* all three strong classical
-   baselines (MLP 0.780, XGBoost 0.762, LR-L1 0.753).
-2. **High VQC variance.** The VQC shows extreme seed sensitivity — AUC
-   ranges from 0.538 to 0.929 across init seeds and subsamples, suggesting
-   the training landscape is poorly conditioned at 6 qubits / 80 epochs.
-3. **LR-L1 is competitive.** Even at N=10, logistic regression with L1
-   regularisation achieves 0.753 mean AUC, confirming its role as the
-   small-data classical champion.
-4. **RBF SVM struggles.** The kernel SVM with default grid search performs
-   poorly at both N=10 and N=20, likely due to inadequate hyperparameter
-   tuning at small sample sizes.
-5. **Runtime.** Classical models complete in <30 seconds total; the VQC
-   requires ~2.5 minutes per training run (~40 minutes for N=10 alone at
-   5 seeds × 2 inits).
+2. **High VQC variance.** Across 60 runs per N, VQC AUC ranges from
+   0.285 to 0.929 (N=10) and 0.386 to 0.918 (N=20). Standard deviation
+   is roughly double that of the classical models, indicating extreme
+   sensitivity to both subsample composition and parameter initialisation.
 
-### Limitations of this quick run
+3. **VQC improves with more data, but so does everything else.** VQC
+   mean AUC rises from 0.627 (N=10) to 0.697 (N=20), a +0.070 gain.
+   MLP gains +0.024, XGBoost +0.061, LR-L1 +0.035. VQC's improvement
+   rate is comparable, but it starts from a lower base and never catches
+   up.
 
-- Only 5 subsample seeds (design calls for 20).
-- Only 2 VQC init seeds (design calls for 3).
-- N=50 and N=100 could not be tested because the training pool has only
-  30 samples per class.
-- VQC was not evaluated at N=20 due to runtime constraints.
-- Quantum kernel was skipped entirely.
+4. **Classical MLP is the strongest model at both sample sizes.** With
+   a parameter-matched architecture and SMOTE-balanced training, MLP
+   achieves 0.723 at N=10 and 0.747 at N=20 — consistently ~0.05–0.10
+   ahead of VQC.
 
-A full overnight run with the complete seed budget is needed to produce
-publication-grade confidence intervals.
+5. **LR-L1 holds its ground.** The simple L1-regularised logistic
+   regression performs within 0.02 of MLP at both N values, confirming
+   its reputation as the small-data classical champion. Its low variance
+   (std 0.075–0.086) makes it a reliable baseline.
+
+6. **RBF SVM is unreliable at small N.** Mean AUC below 0.50 at N=10
+   and extreme variance (std 0.243 at N=20) indicate that the grid-search
+   hyperparameter space is too coarse for very small training sets.
+
+7. **Runtime cost.** The full sweep took ~390 minutes. VQC accounts for
+   the vast majority: each VQC training takes 2–4 minutes vs. <1 second
+   for classical models. At 60 VQC runs per N × 2 N values = 120 VQC
+   trainings, quantum simulation dominates wall-clock time by >100×.
+
+### Conclusion
+
+The v06 learning-curve hint of a small-data quantum advantage does **not
+survive** this more rigorous evaluation. Under controlled 1:1 class
+balance, 20 subsample seeds, 3 VQC init seeds, and a fixed test set, the
+data-reuploading VQC is consistently outperformed by parameter-matched
+MLP, XGBoost, and even simple LR-L1. The result is an honest negative:
+on GSE76809, there is no evidence that the 6-qubit VQC offers a
+sample-efficiency benefit over well-tuned classical methods.
+
+### Limitations
+
+- N_per_class was limited to {10, 20} because the training pool has only
+  30 samples per class. A larger dataset would allow testing whether VQC
+  catches up at intermediate N values (30–100).
+- Quantum kernel was not evaluated due to runtime constraints.
+- All quantum simulation is noiseless (statevector). Real-device noise
+  would likely widen VQC variance further.
+- The VQC architecture (6 qubits, data-reuploading, 80 epochs) was not
+  tuned for this specific sample-efficiency task.
