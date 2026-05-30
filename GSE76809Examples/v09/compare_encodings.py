@@ -17,9 +17,12 @@ from pathlib import Path
 
 import numpy as np
 
+
+
 _THIS = Path(__file__).resolve().parent
+sys.path.insert(0, str(_THIS.parent / "v06"))   # preprocess (added last)
 sys.path.insert(0, str(_THIS.parent))           # shared
-sys.path.insert(0, str(_THIS.parent / "v06"))   # preprocess
+sys.path.insert(0, str(_THIS))  # Ensure v09 is first for local imports
 
 from shared.stats_utils import (  # noqa: E402
 	cohens_d, effect_size_label, wilcoxon_signed_rank,
@@ -28,7 +31,9 @@ from shared.stats_utils import (  # noqa: E402
 
 from preprocess_gse76809 import preprocess  # noqa: E402
 from model_quantum_vqc import train_quantum_vqc  # noqa: E402
-from encodings import ENCODINGS  # noqa: E402
+from quantum_encodings import ENCODINGS  # noqa: E402
+import inspect
+print('DEBUG: train_quantum_vqc loaded from', inspect.getfile(train_quantum_vqc))
 
 
 class NumpyEncoder(json.JSONEncoder):
@@ -48,17 +53,36 @@ def main():
 	if bad:
 		raise SystemExit(f"unknown encodings {bad}; known {list(ENCODINGS)}")
 
+
 	start = time.time()
 	data = preprocess()
 
-	cv = {enc: {"aucs": [], "accs": [], "f1s": []} for enc in args.encodings}
+	out_dir = _THIS / "results"
+	out_dir.mkdir(exist_ok=True)
+	checkpoint_path = out_dir / "v09_encoding_ablation_partial.json"
+
+	# Try to load checkpoint
+	if checkpoint_path.exists():
+		with open(checkpoint_path, "r") as f:
+			cv = json.load(f)
+		print(f"Resuming from checkpoint: {checkpoint_path}")
+	else:
+		cv = {enc: {"aucs": [], "accs": [], "f1s": []} for enc in args.encodings}
+
 	for fold_idx, fold in enumerate(data["folds"]):
 		print(f"\n--- Fold {fold_idx+1}/{len(data['folds'])} ---")
 		for enc in args.encodings:
+			# Resume logic: skip if already done
+			if len(cv[enc]["aucs"]) > fold_idx:
+				print(f"  [resume] Skipping {enc} fold {fold_idx+1}")
+				continue
 			res = train_quantum_vqc(fold_data=fold, encoding=enc)
 			cv[enc]["aucs"].append(res["auc_roc"])
 			cv[enc]["accs"].append(res["accuracy"])
 			cv[enc]["f1s"].append(res["f1_score"])
+			# Save checkpoint after each encoding/fold
+			with open(checkpoint_path, "w") as f:
+				json.dump(cv, f, indent=2, cls=NumpyEncoder)
 
 	print("\nPer-encoding 5-fold AUC:")
 	for enc, r in sorted(cv.items(), key=lambda kv: np.mean(kv[1]["aucs"]), reverse=True):

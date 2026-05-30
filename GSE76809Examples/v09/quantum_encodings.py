@@ -4,7 +4,7 @@ Each function takes:
 	inputs      : torch.Tensor of shape (n_features,)
 	layer_idx   : int — which variational layer is about to run
 	weights_enc : Optional[torch.Tensor] — encoding weights (only used by
-				  data_reuploading)
+			  data_reuploading)
 
 and applies quantum gates to the *current* device wires. They are designed
 to be called inside a PennyLane qnode that already has the device set.
@@ -22,9 +22,7 @@ from __future__ import annotations
 import pennylane as qml
 import torch
 
-
 N_QUBITS = 4
-
 
 def angle_encoding(inputs, layer_idx, weights_enc=None):
 	"""RY(x_i) on each qubit — one feature per qubit, at layer 0 only.
@@ -38,7 +36,6 @@ def angle_encoding(inputs, layer_idx, weights_enc=None):
 	for q in range(N_QUBITS):
 		qml.RY(inputs[q] * torch.pi, wires=q)
 
-
 def amplitude_encoding(inputs, layer_idx, weights_enc=None):
 	"""Amplitude embedding — 16 amplitudes in 4 qubits, at layer 0 only.
 
@@ -48,8 +45,7 @@ def amplitude_encoding(inputs, layer_idx, weights_enc=None):
 	if layer_idx != 0:
 		return
 	qml.AmplitudeEmbedding(inputs, wires=range(N_QUBITS), normalize=False,
-							pad_with=0.0)
-
+						pad_with=0.0)
 
 def iqp_encoding(inputs, layer_idx, weights_enc=None):
 	"""IQP-style feature map (Havlicek 2019): H, RZ(x_i), then ring ZZ(x_i*x_j).
@@ -70,7 +66,6 @@ def iqp_encoding(inputs, layer_idx, weights_enc=None):
 		qml.RZ(inputs[i] * inputs[j], wires=j)
 		qml.CNOT(wires=[i, j])
 
-
 def data_reuploading(inputs, layer_idx, weights_enc):
 	"""Pérez-Salinas-style data reuploading: each qubit gets a learned
 	linear combination of ALL features at every layer.
@@ -80,7 +75,6 @@ def data_reuploading(inputs, layer_idx, weights_enc):
 	for q in range(N_QUBITS):
 		angle = torch.dot(weights_enc[layer_idx, q], inputs)
 		qml.RY(angle, wires=q)
-
 
 ENCODINGS = {
 	"angle": (angle_encoding, False),               # (fn, needs_enc_weights)

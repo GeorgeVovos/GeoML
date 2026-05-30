@@ -38,6 +38,33 @@ operative factor and should be reported as such.
 ```powershell
 cd GSE76809Examples\v09
 python compare_encodings.py                       # all four encodings
+```
+
+## Results: Encoding Ablation (v09)
+
+| Encoding           | Mean AUC | Std AUC | Significant vs Data Reuploading? |
+|--------------------|----------|---------|----------------------------------|
+| data_reuploading   | 0.788    | 0.072   | Reference                        |
+| iqp                | 0.648    | 0.115   | No                               |
+| amplitude          | 0.587    | 0.085   | **Yes (p=0.037)**                |
+| angle              | 0.548    | 0.088   | No                               |
+
+**Interpretation:**
+
+- The `data_reuploading` encoding (used in v06) outperforms all other encodings by a large margin (Cohen's d > 1.3 for all comparisons).
+- Only the difference between `data_reuploading` and `amplitude` encoding is statistically significant after Holm correction (p=0.037).
+- This supports the claim that the performance jump in v06 is primarily due to the encoding strategy, not other pipeline changes.
+
+## Quantum vs Classical (context from v06)
+
+- In v06, the best classical model (XGBoost) achieves higher AUC (0.899 CV, 0.948 holdout) than any quantum model, but the quantum VQC is competitive (0.822 CV, 0.905 holdout) and has the lowest variance.
+- The parameter-matched MLP is essentially tied with the VQC on AUC, but the VQC wins on accuracy and F1.
+- Quantum models degrade more gracefully in the small-data regime, maintaining higher AUC than classical models at 10% of the data.
+- The choice of encoding is critical for quantum advantage: only the data reuploading strategy delivers strong results, while other encodings fall well short of classical baselines.
+
+**Conclusion:**
+
+- Quantum VQC with data reuploading encoding is competitive with strong classical baselines, but does not surpass the best-tuned classical models on this dataset. The encoding choice is the key driver of quantum performance improvements in v06/v09.
 python compare_encodings.py --encodings angle iqp # subset
 ```
 

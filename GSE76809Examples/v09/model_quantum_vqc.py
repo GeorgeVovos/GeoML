@@ -21,7 +21,7 @@ _THIS = Path(__file__).resolve().parent
 sys.path.insert(0, str(_THIS.parent / "v06"))
 from preprocess_gse76809 import apply_smote_to_fold  # noqa: E402
 
-from encodings import ENCODINGS, N_QUBITS  # noqa: E402
+from quantum_encodings import ENCODINGS, N_QUBITS  # noqa: E402
 
 N_LAYERS = 8
 N_FEATURES = 16
