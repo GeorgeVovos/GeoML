@@ -30,6 +30,7 @@ map of the first nine examples and what each one actually found.
 | v04 | Leakage-corrected cross-validation | VQC has highest mean CV AUC; beats XGBoost significantly |
 | v05 | Re-run / re-check with tighter design | MLP becomes best CV model and significantly beats VQC |
 | v06 | Tuned baselines + variance/learning-curve analysis | Tuned XGBoost wins AUC; VQC competitive with lowest variance |
+| v06B | Feature extraction: ANOVA+PCA vs learned embeddings | Supervised MLP encoder has best mean AUC on every model (large gain only for VQC); autoencoder ≈ ANOVA+PCA; no gain Holm-significant |
 | v07 | Cross-dataset replication of v06 | Only GSE76809 completed; replication question still open |
 | v08 | Small-sample efficiency sweep | Negative result: no small-data quantum advantage |
 | v09 | Quantum encoding ablation | Data-reuploading is best; dense_angle (2 feat/qubit) is worst — re-uploading drives performance |
@@ -84,6 +85,25 @@ holdout); the VQC is competitive (~0.82 CV / ~0.91 holdout) with the
 the VQC. Small-data learning-curve hints favour quantum slightly but do
 not overturn the classical lead. v06 is the reference pipeline reused by
 later versions.
+
+### v06B — Feature extraction / embedding comparison
+Compares the v06 ANOVA+PCA feature pipeline against a **supervised MLP
+encoder** (16-unit bottleneck) and an **unsupervised autoencoder** (16-unit
+latent code). All three extractors produce a 16-d embedding from the same
+raw gene matrix, fit on fold-train only. The same four downstream models
+(VQC, MLP, XGBoost, SVM) evaluate each embedding. **Key finding:** the
+supervised MLP encoder has the best mean AUC on every model (0.895–0.929
+vs 0.727–0.837 for ANOVA+PCA), but the advantage is only large for the
+VQC (+0.182, *d* = 1.33); the MLP/XGBoost/SVM gains are modest and no
+comparison reaches Holm-significance at α = 0.05 given the 5-fold
+small-n setting. The unsupervised autoencoder adds little over
+ANOVA+PCA. **Note:** an earlier run reported an `anova_pca`-SVM AUC of
+0.319; this was a `predict_proba` ranking inversion on tiny imbalanced
+inner folds, fixed by ranking the v06B SVM on `decision_function`
+(baseline restored to 0.727). **Takeaway:** supervised learned
+embeddings capture correlated gene structure that univariate ANOVA
+misses — most usefully for the VQC — but on ~200 samples the gain is
+not statistically robust.
 
 ### v07 — Cross-dataset replication
 Intended to replicate v06 across four datasets. **Only GSE76809 actually

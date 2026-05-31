@@ -1,0 +1,475 @@
+Loading GSE76809 dataset...
+Label distribution (all): {1: 458, 0: 76, -1: 43}
+Platform GPL6480: 266 labeled samples
+Samples with expression data: 266
+Genes after NaN removal: 9043
+Genes after variance filter (top 50%): 4521
+
+Holdout split: Train=212, Test=54
+  Train: SSc=182, Healthy=30
+  Test:  SSc=46, Healthy=8
+Selecting top 16 features by ANOVA F-test...
+PCA (6 comps) explained variance: 0.9136
+NO SMOTE applied — will be applied per-fold during training
+Train: 212 (SSc=182, Healthy=30)
+Test: 54 (SSc=46, Healthy=8)
+
+Generating 5-fold CV splits (per-fold feature engineering)...
+  Fold 1: train=169 (SSc=145, H=24), val=43
+  Fold 2: train=169 (SSc=145, H=24), val=43
+  Fold 3: train=170 (SSc=146, H=24), val=42
+  Fold 4: train=170 (SSc=146, H=24), val=42
+  Fold 5: train=170 (SSc=146, H=24), val=42
+Resuming from C:\dev\GeoML\GSE76809Examples\v06B\results\v06B_feature_extraction_partial.json
+
+[anova_pca | quantum_vqc] fold 2/5
+    VQC parameters: 1473
+    Epoch 15/80 — Loss: 0.0011, Val AUC: 0.9505 (best: 0.9550)
+    Epoch 30/80 — Loss: 0.0003, Val AUC: 0.9550 (best: 0.9550)
+    Epoch 45/80 — Loss: 0.0002, Val AUC: 0.9550 (best: 0.9550)
+    Epoch 60/80 — Loss: 0.0002, Val AUC: 0.9550 (best: 0.9550)
+    Early stopping at epoch 63
+    → AUC: 0.9550, Acc: 0.9302, F1: 0.9589
+    AUC=0.9550 (checkpoint saved)
+
+[anova_pca | quantum_vqc] fold 3/5
+    VQC parameters: 1473
+    Epoch 15/80 — Loss: 0.0010, Val AUC: 0.7222 (best: 0.7269)
+    Epoch 30/80 — Loss: 0.0003, Val AUC: 0.7176 (best: 0.7315)
+    Epoch 45/80 — Loss: 0.0002, Val AUC: 0.7407 (best: 0.7407)
+    Epoch 60/80 — Loss: 0.0001, Val AUC: 0.7407 (best: 0.7407)
+    Epoch 75/80 — Loss: 0.0001, Val AUC: 0.7407 (best: 0.7407)
+    → AUC: 0.7407, Acc: 0.8571, F1: 0.9189
+    AUC=0.7407 (checkpoint saved)
+
+[anova_pca | quantum_vqc] fold 4/5
+    VQC parameters: 1473
+    Epoch 15/80 — Loss: 0.0013, Val AUC: 0.8472 (best: 0.8472)
+    Epoch 30/80 — Loss: 0.0003, Val AUC: 0.8426 (best: 0.8472)
+    Epoch 45/80 — Loss: 0.0002, Val AUC: 0.8380 (best: 0.8472)
+    Early stopping at epoch 51
+    → AUC: 0.8380, Acc: 0.8810, F1: 0.9333
+    AUC=0.8380 (checkpoint saved)
+
+[anova_pca | quantum_vqc] fold 5/5
+    VQC parameters: 1473
+    Epoch 15/80 — Loss: 0.0008, Val AUC: 0.5556 (best: 0.5741)
+    Epoch 30/80 — Loss: 0.0003, Val AUC: 0.5463 (best: 0.5741)
+    Epoch 45/80 — Loss: 0.0001, Val AUC: 0.5394 (best: 0.5741)
+    Early stopping at epoch 48
+    → AUC: 0.5347, Acc: 0.8333, F1: 0.9067
+    AUC=0.5347 (checkpoint saved)
+
+[anova_pca | classical_mlp] fold 1/5
+    MLP parameters: 1617
+    Epoch 15/80 — Loss: 0.0499, Val AUC: 0.7162 (best: 0.7748)
+    Epoch 30/80 — Loss: 0.0120, Val AUC: 0.7342 (best: 0.7748)
+    Epoch 45/80 — Loss: 0.0051, Val AUC: 0.7005 (best: 0.7748)
+    Early stopping at epoch 54
+    → AUC: 0.6982, Acc: 0.8372, F1: 0.9067
+    AUC=0.6982 (checkpoint saved)
+
+[anova_pca | classical_mlp] fold 2/5
+    MLP parameters: 1617
+    Epoch 15/80 — Loss: 0.0544, Val AUC: 0.9414 (best: 0.9414)
+    Epoch 30/80 — Loss: 0.0184, Val AUC: 0.9505 (best: 0.9505)
+    Epoch 45/80 — Loss: 0.0350, Val AUC: 0.9505 (best: 0.9550)
+    Epoch 60/80 — Loss: 0.0053, Val AUC: 0.9414 (best: 0.9550)
+    Epoch 75/80 — Loss: 0.0078, Val AUC: 0.9414 (best: 0.9550)
+    Early stopping at epoch 80
+    → AUC: 0.9414, Acc: 0.9535, F1: 0.9730
+    AUC=0.9414 (checkpoint saved)
+
+[anova_pca | classical_mlp] fold 3/5
+    MLP parameters: 1617
+    Epoch 15/80 — Loss: 0.1046, Val AUC: 0.9352 (best: 0.9676)
+    Epoch 30/80 — Loss: 0.0381, Val AUC: 0.9722 (best: 0.9722)
+    Epoch 45/80 — Loss: 0.0118, Val AUC: 0.9630 (best: 0.9722)
+    Epoch 60/80 — Loss: 0.0054, Val AUC: 0.9352 (best: 0.9722)
+    Epoch 75/80 — Loss: 0.0084, Val AUC: 0.9398 (best: 0.9722)
+    Early stopping at epoch 75
+    → AUC: 0.9398, Acc: 0.9048, F1: 0.9474
+    AUC=0.9398 (checkpoint saved)
+
+[anova_pca | classical_mlp] fold 4/5
+    MLP parameters: 1617
+    Epoch 15/80 — Loss: 0.0722, Val AUC: 0.8981 (best: 0.8981)
+    Epoch 30/80 — Loss: 0.0195, Val AUC: 0.9074 (best: 0.9074)
+    Epoch 45/80 — Loss: 0.0158, Val AUC: 0.8796 (best: 0.9074)
+    Epoch 60/80 — Loss: 0.0156, Val AUC: 0.9028 (best: 0.9074)
+    Epoch 75/80 — Loss: 0.0091, Val AUC: 0.8889 (best: 0.9074)
+    Early stopping at epoch 75
+    → AUC: 0.8889, Acc: 0.8571, F1: 0.9167
+    AUC=0.8889 (checkpoint saved)
+
+[anova_pca | classical_mlp] fold 5/5
+    MLP parameters: 1617
+    Epoch 15/80 — Loss: 0.0806, Val AUC: 0.7083 (best: 0.7083)
+    Epoch 30/80 — Loss: 0.0316, Val AUC: 0.6806 (best: 0.7083)
+    Epoch 45/80 — Loss: 0.0087, Val AUC: 0.6898 (best: 0.7083)
+    Epoch 60/80 — Loss: 0.0037, Val AUC: 0.6898 (best: 0.7083)
+    Early stopping at epoch 60
+    → AUC: 0.6898, Acc: 0.8571, F1: 0.9167
+    AUC=0.6898 (checkpoint saved)
+
+[anova_pca | classical_xgb] fold 1/5
+    XGBoost best: depth=3, n_est=50, lr=0.2, mcw=1
+    → AUC: 0.7793, Acc: 0.9070, F1: 0.9487
+    AUC=0.7793 (checkpoint saved)
+
+[anova_pca | classical_xgb] fold 2/5
+    XGBoost best: depth=3, n_est=50, lr=0.1, mcw=1
+    → AUC: 0.9865, Acc: 0.9535, F1: 0.9730
+    AUC=0.9865 (checkpoint saved)
+
+[anova_pca | classical_xgb] fold 3/5
+    XGBoost best: depth=2, n_est=100, lr=0.1, mcw=1
+    → AUC: 0.9074, Acc: 0.9762, F1: 0.9863
+    AUC=0.9074 (checkpoint saved)
+
+[anova_pca | classical_xgb] fold 4/5
+    XGBoost best: depth=3, n_est=150, lr=0.2, mcw=1
+    → AUC: 0.8009, Acc: 0.9048, F1: 0.9474
+    AUC=0.8009 (checkpoint saved)
+
+[anova_pca | classical_xgb] fold 5/5
+    XGBoost best: depth=3, n_est=50, lr=0.2, mcw=1
+    → AUC: 0.7130, Acc: 0.7857, F1: 0.8732
+    AUC=0.7130 (checkpoint saved)
+
+[anova_pca | classical_svm] fold 1/5
+    RBF SVM best params: C=1.0, gamma=0.1
+    → AUC: 0.6577, Acc: 0.8605, F1: 0.9231
+    AUC=0.6577 (checkpoint saved)
+
+[anova_pca | classical_svm] fold 2/5
+    RBF SVM best params: C=0.1, gamma=1.0
+    → AUC: 0.1599, Acc: 0.1395, F1: 0.0000
+    AUC=0.1599 (checkpoint saved)
+
+[anova_pca | classical_svm] fold 3/5
+    RBF SVM best params: C=0.1, gamma=auto
+    → AUC: 0.1157, Acc: 0.7143, F1: 0.8065
+    AUC=0.1157 (checkpoint saved)
+
+[anova_pca | classical_svm] fold 4/5
+    RBF SVM best params: C=0.1, gamma=scale
+    → AUC: 0.2685, Acc: 0.6190, F1: 0.7333
+    AUC=0.2685 (checkpoint saved)
+
+[anova_pca | classical_svm] fold 5/5
+    RBF SVM best params: C=1.0, gamma=1.0
+    → AUC: 0.3935, Acc: 0.8571, F1: 0.9231
+    AUC=0.3935 (checkpoint saved)
+
+[mlp_encoder | quantum_vqc] fold 1/5
+    VQC parameters: 1473
+    Epoch 15/80 — Loss: 0.0004, Val AUC: 0.9032 (best: 0.9054)
+    Epoch 30/80 — Loss: 0.0003, Val AUC: 0.9032 (best: 0.9054)
+    Epoch 45/80 — Loss: 0.0002, Val AUC: 0.9032 (best: 0.9077)
+    Epoch 60/80 — Loss: 0.0001, Val AUC: 0.9032 (best: 0.9099)
+    Epoch 75/80 — Loss: 0.0001, Val AUC: 0.9032 (best: 0.9099)
+    → AUC: 0.9077, Acc: 0.9070, F1: 0.9474
+    AUC=0.9077 (checkpoint saved)
+
+[mlp_encoder | quantum_vqc] fold 2/5
+    VQC parameters: 1473
+    Epoch 15/80 — Loss: 0.0004, Val AUC: 0.8378 (best: 0.8423)
+    Epoch 30/80 — Loss: 0.0003, Val AUC: 0.8401 (best: 0.8423)
+    Epoch 45/80 — Loss: 0.0002, Val AUC: 0.8378 (best: 0.8423)
+    Early stopping at epoch 48
+    → AUC: 0.8401, Acc: 0.9302, F1: 0.9610
+    AUC=0.8401 (checkpoint saved)
+
+[mlp_encoder | quantum_vqc] fold 3/5
+    VQC parameters: 1473
+    Epoch 15/80 — Loss: 0.0004, Val AUC: 0.9815 (best: 0.9815)
+    Epoch 30/80 — Loss: 0.0002, Val AUC: 0.9815 (best: 0.9815)
+    Epoch 45/80 — Loss: 0.0002, Val AUC: 0.9815 (best: 0.9815)
+    Early stopping at epoch 48
+    → AUC: 0.9815, Acc: 0.9286, F1: 0.9600
+    AUC=0.9815 (checkpoint saved)
+
+[mlp_encoder | quantum_vqc] fold 4/5
+    VQC parameters: 1473
+    Epoch 15/80 — Loss: 0.0004, Val AUC: 1.0000 (best: 1.0000)
+    Epoch 30/80 — Loss: 0.0002, Val AUC: 1.0000 (best: 1.0000)
+    Epoch 45/80 — Loss: 0.0001, Val AUC: 1.0000 (best: 1.0000)
+    Early stopping at epoch 48
+    → AUC: 1.0000, Acc: 0.9762, F1: 0.9863
+    AUC=1.0000 (checkpoint saved)
+
+[mlp_encoder | quantum_vqc] fold 5/5
+    VQC parameters: 1473
+    Epoch 15/80 — Loss: 0.0004, Val AUC: 0.8380 (best: 0.8403)
+    Epoch 30/80 — Loss: 0.0002, Val AUC: 0.8356 (best: 0.8403)
+    Epoch 45/80 — Loss: 0.0001, Val AUC: 0.8310 (best: 0.8403)
+    Early stopping at epoch 51
+    → AUC: 0.8241, Acc: 0.8810, F1: 0.9333
+    AUC=0.8241 (checkpoint saved)
+
+[mlp_encoder | classical_mlp] fold 1/5
+    MLP parameters: 1617
+    Epoch 15/80 — Loss: 0.0002, Val AUC: 0.9054 (best: 0.9054)
+    Epoch 30/80 — Loss: 0.0001, Val AUC: 0.9032 (best: 0.9054)
+    Epoch 45/80 — Loss: 0.0001, Val AUC: 0.9032 (best: 0.9054)
+    Early stopping at epoch 48
+    → AUC: 0.9032, Acc: 0.9070, F1: 0.9459
+    AUC=0.9032 (checkpoint saved)
+
+[mlp_encoder | classical_mlp] fold 2/5
+    MLP parameters: 1617
+    Epoch 15/80 — Loss: 0.0002, Val AUC: 0.9550 (best: 0.9550)
+    Epoch 30/80 — Loss: 0.0001, Val AUC: 0.9550 (best: 0.9550)
+    Epoch 45/80 — Loss: 0.0001, Val AUC: 0.9505 (best: 0.9550)
+    Early stopping at epoch 48
+    → AUC: 0.9527, Acc: 0.9302, F1: 0.9610
+    AUC=0.9527 (checkpoint saved)
+
+[mlp_encoder | classical_mlp] fold 3/5
+    MLP parameters: 1617
+    Epoch 15/80 — Loss: 0.0001, Val AUC: 0.9722 (best: 0.9722)
+    Epoch 30/80 — Loss: 0.0002, Val AUC: 0.9722 (best: 0.9722)
+    Epoch 45/80 — Loss: 0.0001, Val AUC: 0.9722 (best: 0.9722)
+    Early stopping at epoch 48
+    → AUC: 0.9722, Acc: 0.9524, F1: 0.9722
+    AUC=0.9722 (checkpoint saved)
+
+[mlp_encoder | classical_mlp] fold 4/5
+    MLP parameters: 1617
+    Epoch 15/80 — Loss: 0.0001, Val AUC: 1.0000 (best: 1.0000)
+    Epoch 30/80 — Loss: 0.0002, Val AUC: 1.0000 (best: 1.0000)
+    Epoch 45/80 — Loss: 0.0001, Val AUC: 1.0000 (best: 1.0000)
+    Early stopping at epoch 48
+    → AUC: 1.0000, Acc: 1.0000, F1: 1.0000
+    AUC=1.0000 (checkpoint saved)
+
+[mlp_encoder | classical_mlp] fold 5/5
+    MLP parameters: 1617
+    Epoch 15/80 — Loss: 0.0001, Val AUC: 0.8241 (best: 0.8241)
+    Epoch 30/80 — Loss: 0.0002, Val AUC: 0.8032 (best: 0.8264)
+    Epoch 45/80 — Loss: 0.0001, Val AUC: 0.8032 (best: 0.8264)
+    Epoch 60/80 — Loss: 0.0001, Val AUC: 0.8056 (best: 0.8264)
+    Early stopping at epoch 69
+    → AUC: 0.8102, Acc: 0.8095, F1: 0.8824
+    AUC=0.8102 (checkpoint saved)
+
+[mlp_encoder | classical_xgb] fold 1/5
+    XGBoost best: depth=2, n_est=50, lr=0.05, mcw=1
+    → AUC: 0.8919, Acc: 0.9302, F1: 0.9610
+    AUC=0.8919 (checkpoint saved)
+
+[mlp_encoder | classical_xgb] fold 2/5
+    XGBoost best: depth=2, n_est=50, lr=0.05, mcw=1
+    → AUC: 0.9459, Acc: 0.9070, F1: 0.9487
+    AUC=0.9459 (checkpoint saved)
+
+[mlp_encoder | classical_xgb] fold 3/5
+    XGBoost best: depth=2, n_est=50, lr=0.05, mcw=1
+    → AUC: 0.8727, Acc: 0.7381, F1: 0.8197
+    AUC=0.8727 (checkpoint saved)
+
+[mlp_encoder | classical_xgb] fold 4/5
+    XGBoost best: depth=2, n_est=50, lr=0.05, mcw=1
+    → AUC: 0.9653, Acc: 0.8571, F1: 0.9091
+    AUC=0.9653 (checkpoint saved)
+
+[mlp_encoder | classical_xgb] fold 5/5
+    XGBoost best: depth=2, n_est=50, lr=0.05, mcw=1
+    → AUC: 0.7986, Acc: 0.6667, F1: 0.7667
+    AUC=0.7986 (checkpoint saved)
+
+[mlp_encoder | classical_svm] fold 1/5
+    RBF SVM best params: C=0.1, gamma=scale
+    → AUC: 0.9054, Acc: 0.8837, F1: 0.9333
+    AUC=0.9054 (checkpoint saved)
+
+[mlp_encoder | classical_svm] fold 2/5
+    RBF SVM best params: C=0.1, gamma=scale
+    → AUC: 0.9550, Acc: 0.9302, F1: 0.9610
+    AUC=0.9550 (checkpoint saved)
+
+[mlp_encoder | classical_svm] fold 3/5
+    RBF SVM best params: C=0.1, gamma=scale
+    → AUC: 0.9815, Acc: 0.9524, F1: 0.9722
+    AUC=0.9815 (checkpoint saved)
+
+[mlp_encoder | classical_svm] fold 4/5
+    RBF SVM best params: C=0.1, gamma=scale
+    → AUC: 1.0000, Acc: 0.9762, F1: 0.9863
+    AUC=1.0000 (checkpoint saved)
+
+[mlp_encoder | classical_svm] fold 5/5
+    RBF SVM best params: C=0.1, gamma=scale
+    → AUC: 0.8009, Acc: 0.8810, F1: 0.9296
+    AUC=0.8009 (checkpoint saved)
+
+[autoencoder | quantum_vqc] fold 1/5
+    VQC parameters: 1473
+    Epoch 15/80 — Loss: 0.0460, Val AUC: 0.6577 (best: 0.8604)
+    Epoch 30/80 — Loss: 0.0141, Val AUC: 0.5901 (best: 0.8604)
+    Epoch 45/80 — Loss: 0.0123, Val AUC: 0.6216 (best: 0.8604)
+    Early stopping at epoch 48
+    → AUC: 0.5946, Acc: 0.7442, F1: 0.8493
+    AUC=0.5946 (checkpoint saved)
+
+[autoencoder | quantum_vqc] fold 2/5
+    VQC parameters: 1473
+    Epoch 15/80 — Loss: 0.0590, Val AUC: 0.8649 (best: 0.9505)
+    Epoch 30/80 — Loss: 0.0164, Val AUC: 0.8874 (best: 0.9505)
+    Epoch 45/80 — Loss: 0.0064, Val AUC: 0.8739 (best: 0.9505)
+    Early stopping at epoch 51
+    → AUC: 0.8739, Acc: 0.8605, F1: 0.9143
+    AUC=0.8739 (checkpoint saved)
+
+[autoencoder | quantum_vqc] fold 3/5
+    VQC parameters: 1473
+    Epoch 15/80 — Loss: 0.0175, Val AUC: 0.7083 (best: 0.7963)
+    Epoch 30/80 — Loss: 0.0027, Val AUC: 0.6713 (best: 0.7963)
+    Epoch 45/80 — Loss: 0.0014, Val AUC: 0.6528 (best: 0.7963)
+    Early stopping at epoch 48
+    → AUC: 0.6597, Acc: 0.8571, F1: 0.9189
+    AUC=0.6597 (checkpoint saved)
+
+[autoencoder | quantum_vqc] fold 4/5
+    VQC parameters: 1473
+    Epoch 15/80 — Loss: 0.0156, Val AUC: 0.8750 (best: 0.8843)
+    Epoch 30/80 — Loss: 0.0011, Val AUC: 0.8565 (best: 0.8843)
+    Epoch 45/80 — Loss: 0.0020, Val AUC: 0.8472 (best: 0.8843)
+    Early stopping at epoch 48
+    → AUC: 0.8472, Acc: 0.8333, F1: 0.9014
+    AUC=0.8472 (checkpoint saved)
+
+[autoencoder | quantum_vqc] fold 5/5
+    VQC parameters: 1473
+    Epoch 15/80 — Loss: 0.0107, Val AUC: 0.8241 (best: 0.8241)
+    Epoch 30/80 — Loss: 0.0008, Val AUC: 0.8426 (best: 0.8426)
+    Epoch 45/80 — Loss: 0.0003, Val AUC: 0.8495 (best: 0.8611)
+    Epoch 60/80 — Loss: 0.0002, Val AUC: 0.8565 (best: 0.8611)
+    Epoch 75/80 — Loss: 0.0002, Val AUC: 0.8565 (best: 0.8611)
+    Early stopping at epoch 78
+    → AUC: 0.8565, Acc: 0.8571, F1: 0.9143
+    AUC=0.8565 (checkpoint saved)
+
+[autoencoder | classical_mlp] fold 1/5
+    MLP parameters: 1617
+    Epoch 15/80 — Loss: 0.1851, Val AUC: 0.7432 (best: 0.7928)
+    Epoch 30/80 — Loss: 0.1258, Val AUC: 0.7207 (best: 0.7928)
+    Epoch 45/80 — Loss: 0.0663, Val AUC: 0.7072 (best: 0.7928)
+    Early stopping at epoch 51
+    → AUC: 0.7162, Acc: 0.7674, F1: 0.8611
+    AUC=0.7162 (checkpoint saved)
+
+[autoencoder | classical_mlp] fold 2/5
+    MLP parameters: 1617
+    Epoch 15/80 — Loss: 0.2033, Val AUC: 0.8964 (best: 0.9279)
+    Epoch 30/80 — Loss: 0.1268, Val AUC: 0.9144 (best: 0.9459)
+    Epoch 45/80 — Loss: 0.1091, Val AUC: 0.9099 (best: 0.9459)
+    Epoch 60/80 — Loss: 0.0719, Val AUC: 0.9234 (best: 0.9459)
+    Early stopping at epoch 66
+    → AUC: 0.9234, Acc: 0.8605, F1: 0.9143
+    AUC=0.9234 (checkpoint saved)
+
+[autoencoder | classical_mlp] fold 3/5
+    MLP parameters: 1617
+    Epoch 15/80 — Loss: 0.2502, Val AUC: 0.8009 (best: 0.8102)
+    Epoch 30/80 — Loss: 0.1267, Val AUC: 0.7523 (best: 0.8102)
+    Epoch 45/80 — Loss: 0.1066, Val AUC: 0.7083 (best: 0.8102)
+    Early stopping at epoch 57
+    → AUC: 0.7222, Acc: 0.7857, F1: 0.8732
+    AUC=0.7222 (checkpoint saved)
+
+[autoencoder | classical_mlp] fold 4/5
+    MLP parameters: 1617
+    Epoch 15/80 — Loss: 0.1919, Val AUC: 0.9444 (best: 0.9444)
+    Epoch 30/80 — Loss: 0.0984, Val AUC: 0.9028 (best: 0.9444)
+    Epoch 45/80 — Loss: 0.0777, Val AUC: 0.8981 (best: 0.9444)
+    Epoch 60/80 — Loss: 0.0667, Val AUC: 0.9028 (best: 0.9444)
+    Early stopping at epoch 60
+    → AUC: 0.9028, Acc: 0.9286, F1: 0.9589
+    AUC=0.9028 (checkpoint saved)
+
+[autoencoder | classical_mlp] fold 5/5
+    MLP parameters: 1617
+    Epoch 15/80 — Loss: 0.0757, Val AUC: 0.8495 (best: 0.8565)
+    Epoch 30/80 — Loss: 0.0198, Val AUC: 0.8171 (best: 0.8565)
+    Epoch 45/80 — Loss: 0.0266, Val AUC: 0.8287 (best: 0.8565)
+    Early stopping at epoch 57
+    → AUC: 0.8356, Acc: 0.8571, F1: 0.9167
+    AUC=0.8356 (checkpoint saved)
+
+[autoencoder | classical_xgb] fold 1/5
+    XGBoost best: depth=2, n_est=50, lr=0.1, mcw=1
+    → AUC: 0.9459, Acc: 0.8837, F1: 0.9315
+    AUC=0.9459 (checkpoint saved)
+
+[autoencoder | classical_xgb] fold 2/5
+    XGBoost best: depth=2, n_est=150, lr=0.1, mcw=3
+    → AUC: 0.9099, Acc: 0.8140, F1: 0.8824
+    AUC=0.9099 (checkpoint saved)
+
+[autoencoder | classical_xgb] fold 3/5
+    XGBoost best: depth=2, n_est=50, lr=0.2, mcw=3
+    → AUC: 0.7407, Acc: 0.7857, F1: 0.8696
+    AUC=0.7407 (checkpoint saved)
+
+[autoencoder | classical_xgb] fold 4/5
+    XGBoost best: depth=3, n_est=100, lr=0.1, mcw=1
+    → AUC: 0.9167, Acc: 0.8810, F1: 0.9275
+    AUC=0.9167 (checkpoint saved)
+
+[autoencoder | classical_xgb] fold 5/5
+    XGBoost best: depth=2, n_est=100, lr=0.05, mcw=1
+    → AUC: 0.7315, Acc: 0.7619, F1: 0.8485
+    AUC=0.7315 (checkpoint saved)
+
+[autoencoder | classical_svm] fold 1/5
+    RBF SVM best params: C=10.0, gamma=auto
+    → AUC: 0.7432, Acc: 0.7209, F1: 0.8286
+    AUC=0.7432 (checkpoint saved)
+
+[autoencoder | classical_svm] fold 2/5
+    RBF SVM best params: C=100.0, gamma=scale
+    → AUC: 0.8919, Acc: 0.8372, F1: 0.9014
+    AUC=0.8919 (checkpoint saved)
+
+[autoencoder | classical_svm] fold 3/5
+    RBF SVM best params: C=1.0, gamma=0.1
+    → AUC: 0.8148, Acc: 0.6667, F1: 0.7742
+    AUC=0.8148 (checkpoint saved)
+
+[autoencoder | classical_svm] fold 4/5
+    RBF SVM best params: C=1.0, gamma=scale
+    → AUC: 0.8935, Acc: 0.7619, F1: 0.8438
+    AUC=0.8935 (checkpoint saved)
+
+[autoencoder | classical_svm] fold 5/5
+    RBF SVM best params: C=10.0, gamma=auto
+    → AUC: 0.8102, Acc: 0.8333, F1: 0.8955
+    AUC=0.8102 (checkpoint saved)
+
+=== Mean 5-fold AUC by (extractor, model) ===
+  anova_pca::quantum_vqc             0.7290 +/- 0.1575
+  anova_pca::classical_mlp           0.8316 +/- 0.1140
+  anova_pca::classical_xgb           0.8374 +/- 0.0973
+  anova_pca::classical_svm           0.3191 +/- 0.1946
+  mlp_encoder::quantum_vqc           0.9107 +/- 0.0714
+  mlp_encoder::classical_mlp         0.9277 +/- 0.0667
+  mlp_encoder::classical_xgb         0.8949 +/- 0.0589
+  mlp_encoder::classical_svm         0.9286 +/- 0.0713
+  autoencoder::quantum_vqc           0.7664 +/- 0.1158
+  autoencoder::classical_mlp         0.8201 +/- 0.0873
+  autoencoder::classical_xgb         0.8489 +/- 0.0930
+  autoencoder::classical_svm         0.8307 +/- 0.0566
+
+=== Learned extractor vs anova_pca (Holm-adjusted) ===
+  quantum_vqc      mlp_encoder  dAUC=+0.1817 d=+1.33 p_adj=0.4063
+  quantum_vqc      autoencoder  dAUC=+0.0374 d=+0.24 p_adj=0.7549
+  classical_mlp    mlp_encoder  dAUC=+0.0960 d=+0.92 p_adj=0.2785
+  classical_mlp    autoencoder  dAUC=-0.0116 d=-0.10 p_adj=0.9022
+  classical_xgb    mlp_encoder  dAUC=+0.0575 d=+0.64 p_adj=0.8069
+  classical_xgb    autoencoder  dAUC=+0.0115 d=+0.11 p_adj=0.9063
+  classical_svm    mlp_encoder  dAUC=+0.6095 d=+3.72 p_adj=0.0557
+  classical_svm    autoencoder  dAUC=+0.5117 d=+3.19 p_adj=0.0557
+
+Saved C:\dev\GeoML\GSE76809Examples\v06B\results\v06B_feature_extraction.json (runtime 237.9 min)
