@@ -1,4 +1,4 @@
-"""Four data-loading circuit fragments for v09's encoding ablation.
+"""Five data-loading circuit fragments for v09's encoding ablation.
 
 Each function takes:
 	inputs      : torch.Tensor of shape (n_features,)
@@ -15,6 +15,8 @@ Notes:
   driver does that.
 - iqp / amplitude / angle are *single-shot* — they ignore layer_idx (the
   encoding runs at layer 0 only). data_reuploading uses every layer.
+- dense_angle is also single-shot but packs 2 features per qubit (RY+RZ),
+  loading 8 of the 16 features vs 4 for plain angle.
 """
 
 from __future__ import annotations
@@ -35,6 +37,21 @@ def angle_encoding(inputs, layer_idx, weights_enc=None):
 		return
 	for q in range(N_QUBITS):
 		qml.RY(inputs[q] * torch.pi, wires=q)
+
+def dense_angle_encoding(inputs, layer_idx, weights_enc=None):
+	"""Dense angle encoding — TWO features per qubit, at layer 0 only.
+
+	Each qubit carries two features on orthogonal rotation axes:
+	RY(x_{2q}) followed by RZ(x_{2q+1}). With 4 qubits this loads the
+	first 8 of the 16 features (vs only 4 for plain angle encoding),
+	doubling the information packed into the same register without
+	adding qubits or trainable encoding weights.
+	"""
+	if layer_idx != 0:
+		return
+	for q in range(N_QUBITS):
+		qml.RY(inputs[2 * q] * torch.pi, wires=q)
+		qml.RZ(inputs[2 * q + 1] * torch.pi, wires=q)
 
 def amplitude_encoding(inputs, layer_idx, weights_enc=None):
 	"""Amplitude embedding — 16 amplitudes in 4 qubits, at layer 0 only.
@@ -78,6 +95,7 @@ def data_reuploading(inputs, layer_idx, weights_enc):
 
 ENCODINGS = {
 	"angle": (angle_encoding, False),               # (fn, needs_enc_weights)
+	"dense_angle": (dense_angle_encoding, False),   # 2 features / qubit
 	"amplitude": (amplitude_encoding, False),
 	"iqp": (iqp_encoding, False),
 	"data_reuploading": (data_reuploading, True),

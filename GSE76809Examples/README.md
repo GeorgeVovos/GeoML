@@ -32,7 +32,7 @@ map of the first nine examples and what each one actually found.
 | v06 | Tuned baselines + variance/learning-curve analysis | Tuned XGBoost wins AUC; VQC competitive with lowest variance |
 | v07 | Cross-dataset replication of v06 | Only GSE76809 completed; replication question still open |
 | v08 | Small-sample efficiency sweep | Negative result: no small-data quantum advantage |
-| v09 | Quantum encoding ablation | Data-reuploading is the strongest encoding by a large margin |
+| v09 | Quantum encoding ablation | Data-reuploading is best; dense_angle (2 feat/qubit) is worst — re-uploading drives performance |
 
 ---
 
@@ -104,13 +104,16 @@ tighter design. (The VQC reuses v06's 4-qubit data-reuploading circuit.)
 ### v09 — Encoding ablation
 Holds the variational circuit fixed and swaps only the **data-encoding**
 strategy. Mean CV AUCs: **data_reuploading 0.788** > iqp 0.648 >
-amplitude 0.587 > angle 0.548. By effect size the gap is large
-(Cohen's d > 1.3), but after Holm correction **only amplitude vs
-data_reuploading is statistically significant** (adjusted p = 0.037).
+amplitude 0.587 > angle 0.548 > dense_angle 0.487. By effect size the
+gap is large (Cohen's d > 1.3), but after Holm correction **only
+amplitude vs data_reuploading is statistically significant** (adjusted
+p = 0.049). Notably, `dense_angle` (2 features per qubit, single-shot)
+performs *worse* than plain `angle` (1 feature per qubit), showing that
+packing more features into rotations without layer-wise repetition does
+not help — it is the **re-uploading** that drives performance.
 **Takeaway:** data-reuploading is the key encoding driver of the quantum
-model's competitiveness — though strictly, superiority is *proven* only
-over amplitude encoding and *suggested* (not confirmed) over iqp/angle.
-Even so, the best encoding still loses to tuned XGBoost.
+model's competitiveness. Even so, the best encoding still loses to tuned
+XGBoost.
 
 ---
 

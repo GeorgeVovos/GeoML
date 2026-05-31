@@ -66,6 +66,10 @@ def main():
 		with open(checkpoint_path, "r") as f:
 			cv = json.load(f)
 		print(f"Resuming from checkpoint: {checkpoint_path}")
+		# Ensure new encodings have an entry in the checkpoint dict
+		for enc in args.encodings:
+			if enc not in cv:
+				cv[enc] = {"aucs": [], "accs": [], "f1s": []}
 	else:
 		cv = {enc: {"aucs": [], "accs": [], "f1s": []} for enc in args.encodings}
 

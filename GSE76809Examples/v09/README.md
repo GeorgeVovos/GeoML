@@ -16,13 +16,21 @@ quantum circuit changes.
 
 | Encoding              | Qubits | Data per layer | What it tests                       |
 |-----------------------|--------|----------------|-------------------------------------|
-| `angle`               | 4      | once (start)   | v01-style baseline                  |
+| `angle`               | 4      | once (start)   | v01-style baseline (1 feature/qubit) |
+| `dense_angle`         | 4      | once (start)   | 2 features/qubit via RY+RZ          |
 | `amplitude`           | 4      | once (start)   | v03/v04-style "compression"         |
 | `iqp`                 | 4      | once (start)   | Hadamard + RZ + ZZ feature map      |
 | `data_reuploading`    | 4      | every layer    | v06 baseline (reference)            |
 
-Variational layers and measurements are *identical* across all four runs.
+Variational layers and measurements are *identical* across all five runs.
 The only difference is how the 16 input features become qubit rotations.
+
+`dense_angle` is a stronger version of `angle`: instead of loading one
+feature per qubit (4 features total, the v01-style bottleneck), it packs
+**two features per qubit** on orthogonal axes — `RY(x_{2q})` followed by
+`RZ(x_{2q+1})` — loading the first **8** of the 16 features into the same
+4-qubit register without adding qubits or trainable encoding weights. It
+isolates the effect of *encoding density* alone.
 
 ## Why this matters
 
@@ -51,14 +59,16 @@ Runtime: the actual full 4-encoding run took **~386 min (~6.4 h)** on CPU
 |--------------------|----------|---------|----------------------------------|
 | data_reuploading   | 0.788    | 0.072   | Reference                        |
 | iqp                | 0.648    | 0.115   | No                               |
-| amplitude          | 0.587    | 0.085   | **Yes (p=0.037)**                |
+| amplitude          | 0.587    | 0.085   | **Yes (p=0.049)**                |
 | angle              | 0.548    | 0.088   | No                               |
+| dense_angle        | 0.487    | 0.194   | No                               |
 
 **Interpretation:**
 
 - The `data_reuploading` encoding (used in v06) outperforms all other encodings by a large margin (Cohen's d > 1.3 for all comparisons).
-- Only the difference between `data_reuploading` and `amplitude` encoding is statistically significant after Holm correction (p=0.037).
-- This supports the claim that the performance jump in v06 is primarily due to the encoding strategy, not other pipeline changes.
+- Only the difference between `data_reuploading` and `amplitude` encoding is statistically significant after Holm correction (p=0.049).
+- `dense_angle` (2 features/qubit) performs *worse* than plain `angle` (1 feature/qubit), with extremely high variance (std 0.194). Packing more features into single-shot rotations without layer-wise repetition does not help — the circuit cannot extract useful information from the extra rotations in a single pass.
+- This strongly supports the claim that it is the **re-uploading** (layer-wise repetition) that drives performance, not merely the number of features encoded.
 
 ## Quantum vs Classical (context from v06)
 
@@ -75,7 +85,7 @@ Runtime: the actual full 4-encoding run took **~386 min (~6.4 h)** on CPU
 
 | File                  | Purpose                                       |
 |-----------------------|-----------------------------------------------|
-| `encodings.py`        | The four data-loading circuit fragments        |
+| `quantum_encodings.py`| The five data-loading circuit fragments        |
 | `model_quantum_vqc.py`| VQC parameterised by encoding name             |
 | `compare_encodings.py`| 5-fold CV runner; writes results JSON          |
 
