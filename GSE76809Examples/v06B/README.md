@@ -42,6 +42,17 @@ classifiers see them.
 - `classical_xgb` — tuned XGBoost (inner 3-fold CV)
 - `classical_svm` — RBF SVM (inner grid search)
 
+> **Note — the `anova_pca` baseline here is *not* identical to v06's pipeline.**
+> v06B re-derives its own embedding (ANOVA top‑64 → `StandardScaler` →
+> `PCA(16)`) on a fresh `StratifiedKFold(shuffle=True)` split, whereas v06
+> selects ANOVA‑16 directly and applies per‑fold SMOTE on its own fold
+> structure. So v06B's `anova_pca::quantum_vqc` (0.729) does **not** match
+> v06's VQC CV AUC (0.822) — they are different pipelines on different
+> folds. This is intentional: the v06B comparison is *internally* fair
+> because all three extractors share the exact same folds and downstream
+> models, so the cross‑extractor deltas are valid even though the absolute
+> numbers are not directly comparable to v06.
+
 ## Running
 
 ```powershell

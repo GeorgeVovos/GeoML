@@ -67,6 +67,7 @@ Runtime: the actual full 4-encoding run took **~386 min (~6.4 h)** on CPU
 
 - The `data_reuploading` encoding (used in v06) outperforms all other encodings by a large margin (Cohen's d > 1.3 for all comparisons).
 - Only the difference between `data_reuploading` and `amplitude` encoding is statistically significant after Holm correction (p=0.049).
+- **Why only amplitude, when `angle` and `dense_angle` have *larger* raw AUC gaps?** Significance here is driven by *consistency*, not gap size. `amplitude` loses on every fold by a similar amount (its Nadeau–Bengio p=0.012 is the smallest), whereas `angle` (std 0.088) and especially `dense_angle` (std 0.194) are noisier, so their larger mean gaps come with wider uncertainty and survive Holm correction as non-significant. With only 5 folds, none of the comparisons should be over-interpreted — the large, uniform effect sizes (d > 1.3) are the more reliable signal than the individual p-values.
 - `dense_angle` (2 features/qubit) performs *worse* than plain `angle` (1 feature/qubit), with extremely high variance (std 0.194). Packing more features into single-shot rotations without layer-wise repetition does not help — the circuit cannot extract useful information from the extra rotations in a single pass.
 - This strongly supports the claim that it is the **re-uploading** (layer-wise repetition) that drives performance, not merely the number of features encoded.
 
