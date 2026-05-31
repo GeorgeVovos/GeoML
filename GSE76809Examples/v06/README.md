@@ -159,7 +159,7 @@ parameter-matched MLP is essentially tied with VQC on AUC (0.902 vs 0.905).
 
 On CV, the VQC has the **lowest variance** (std = 0.069) of any model — the
 parameter-matched MLP swings much more (0.093) and XGBoost more again (0.101).
-VQC beats both classical neural networks on the 5-fold mean.
+VQC beats the parameter-matched MLP and the RBF-SVM on the 5-fold mean.
 
 ### Learning Curves (mean AUC across 3 repeats per fraction; per-subsample refit)
 

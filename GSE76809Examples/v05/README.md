@@ -136,8 +136,8 @@ feature-engineering choices through the CV folds. The current code fixes:
   data-fraction subsample. Now refit on each subsample.
 
 These fixes mostly affected CV AUC variance and small-data learning-curve
-points; the overall ranking (MLP > XGBoost > VQC > Kernel) is unchanged from
-the pre-fix v05.
+points; the overall ranking (MLP > VQC > XGBoost > Kernel, with VQC and
+XGBoost essentially tied) is unchanged from the pre-fix v05.
 
 ---
 
@@ -156,7 +156,7 @@ SMOTE and uses only 16 ANOVA-selected features with 4-qubit circuits, so it is
 a harder setting for every model. Within each version the model rankings are:
 
 - **v04 (post-fix)**: VQC ≈ MLP > XGBoost > Kernel
-- **v05 (post-fix)**: MLP > XGBoost > VQC > Kernel
+- **v05 (post-fix)**: MLP > VQC > XGBoost > Kernel (VQC 0.832 ≈ XGBoost 0.825, tied)
 
 ### What This Means
 

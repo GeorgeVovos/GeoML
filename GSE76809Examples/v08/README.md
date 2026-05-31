@@ -102,9 +102,10 @@ quantum advantage").
 
 **Dataset:** GSE76809, 266 usable samples (4521 genes after variance
 filter). The training pool contains only 30 samples per class, so
-N_per_class ∈ {50, 100} could not be tested. Quantum kernel was skipped
-due to runtime constraints. All results use the fixed v06 holdout test
-set (54 samples).
+N_per_class ∈ {50, 100} could not be tested. Of the remaining grid
+({5, 10, 15, 20, 30}), only **N=10 and N=20 were run in this pass** — the
+two points reported below. Quantum kernel was skipped due to runtime
+constraints. All results use the fixed v06 holdout test set (54 samples).
 
 ### N_per_class = 10 (total training = 20 samples, 1:1 balanced)
 

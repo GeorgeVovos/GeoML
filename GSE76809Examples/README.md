@@ -71,7 +71,8 @@ holdout favours MLP).
 ### v05 — Re-check under a tighter design
 A re-run / re-evaluation flips the v04 ranking: the **MLP becomes the
 best CV model** and significantly outperforms the VQC, with ordering
-MLP > XGBoost > VQC > quantum-kernel. **Takeaway:** the apparent quantum
+MLP > VQC > XGBoost > quantum-kernel (VQC and XGBoost essentially tied:
+0.832 vs 0.825, p = 0.87). **Takeaway:** the apparent quantum
 CV edge in v04 is fragile and does not survive a tighter design —
 results are highly sensitive to pipeline details.
 
