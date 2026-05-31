@@ -163,6 +163,5 @@ XGBoost.
 | Task | Binary classification |
 | Primary metric | AUC-ROC (plus accuracy, F1, calibration in later versions) |
 
-> Versions **v10–v13** extend this work (noise sweeps, alternative
-> quantum kernels, extra classical baselines, and calibration /
-> decision-curve analysis) and are documented in their own folders.
+> Version **v10** extends this work (noise sweeps) and is documented in
+> its own folder.
