@@ -1,15 +1,21 @@
-"""Noisy-simulation port of v06's data-reuploading VQC.
+"""Noisy-simulation port of v06's data-reuploading VQC for v10A.
 
-Wraps v06.model_quantum_vqc but injects depolarising noise after every
-gate. Exposes the noise probability as the new ``noise_p`` argument.
+This is the **same data-reuploading ansatz v08 used** (v06's 4-qubit,
+8-layer DataReuploadingVQC), re-hosted on PennyLane's ``default.mixed``
+density-matrix simulator so we can inject realistic NISQ gate error.
 
-A single-qubit DepolarizingChannel with probability p is applied after
-each single-qubit rotation, and a two-qubit DepolarizingChannel with
-probability 10*p (applied to the CNOT pair via a tensor-product channel
-approximation) is applied after each CNOT.
+A single-qubit ``DepolarizingChannel`` with probability ``noise_p`` is
+applied after every single-qubit rotation, and a two-qubit depolarising
+channel (approximated by a product of single-qubit channels at
+probability ``min(10*noise_p, 0.75)``) is applied after every CNOT.
 
-For p = 0 the circuit is mathematically identical to v06 (modulo the
-density-matrix vs statevector representation).
+For ``noise_p == 0`` the circuit is mathematically identical to the v08
+VQC (modulo the density-matrix vs statevector representation), so the
+``noise_p = 0`` column reproduces v08's noiseless small-data curve.
+
+The public ``train_noisy_vqc`` keeps v08's calling convention
+(``fold_data`` dict + ``use_smote`` + ``init_seed``) so the v10A driver
+can reuse v08's fold-building / subsampling harness unchanged.
 """
 
 from __future__ import annotations
@@ -33,17 +39,18 @@ N_FEATURES = 16
 
 
 def _build_noisy_qnode(noise_p: float):
+	"""Build a density-matrix qnode with depolarising noise after every gate."""
 	dev = qml.device("default.mixed", wires=N_QUBITS)
-	two_qubit_p = min(10.0 * noise_p, 0.75)  # cap to physical range
+	two_qubit_p = min(10.0 * noise_p, 0.75)  # cap to the physical range
 
 	def _depol_single(q):
 		if noise_p > 0:
 			qml.DepolarizingChannel(noise_p, wires=q)
 
 	def _depol_two(q1, q2):
-		# Approximate 2-qubit depolarising via product of single-qubit channels
-		# (a fully general 2-qubit depolarising channel exists but is much
-		# slower; the product approximation is the standard cheap version).
+		# Product-of-single-qubit approximation of a 2-qubit depolarising
+		# channel (the standard cheap version; a fully general 2-qubit
+		# channel exists but is much slower).
 		if two_qubit_p > 0:
 			qml.DepolarizingChannel(two_qubit_p, wires=q1)
 			qml.DepolarizingChannel(two_qubit_p, wires=q2)
@@ -51,7 +58,8 @@ def _build_noisy_qnode(noise_p: float):
 	@qml.qnode(dev, interface="torch", diff_method="backprop")
 	def circuit(inputs, weights_enc, weights_var):
 		for layer in range(N_LAYERS):
-			# Data reuploading
+			# Data reuploading: each qubit gets a learned linear combination
+			# of ALL features at every layer.
 			for q in range(N_QUBITS):
 				angle = torch.dot(weights_enc[layer, q], inputs)
 				qml.RY(angle, wires=q)
@@ -77,6 +85,8 @@ def _build_noisy_qnode(noise_p: float):
 
 
 class NoisyVQC(nn.Module):
+	"""v06/v08 data-reuploading VQC on default.mixed with depolarising noise."""
+
 	def __init__(self, noise_p: float):
 		super().__init__()
 		self.noise_p = noise_p
@@ -95,11 +105,20 @@ class NoisyVQC(nn.Module):
 			outs.append(torch.stack(self.circuit(x[i], self.weights_enc, self.weights_var)))
 		return self.post_net(torch.stack(outs).float()).squeeze(-1)
 
+	def count_parameters(self):
+		return sum(p.numel() for p in self.parameters() if p.requires_grad)
+
 
 def train_noisy_vqc(fold_data, noise_p: float = 0.0, epochs: int = 40,
-					 batch_size: int = 24, lr: float = 0.005, patience: int = 10,
-					 use_smote: bool = True, random_state: int = 2026,
-					 init_seed=None):
+					batch_size: int = 24, lr: float = 0.005, patience: int = 10,
+					use_smote: bool = True, random_state: int = 2026,
+					init_seed=None):
+	"""Train the noisy VQC on one (subsample) fold; evaluate on the fixed test set.
+
+	Signature mirrors v08's ``train_quantum_vqc`` so the v10A driver can
+	reuse v08's ``make_fold`` / ``apply_smote_if_needed`` harness. The
+	extra ``noise_p`` argument selects the depolarising strength.
+	"""
 	X_train, X_val = fold_data["X_train"], fold_data["X_val"]
 	y_train, y_val = fold_data["y_train"], fold_data["y_val"]
 
@@ -144,7 +163,6 @@ def train_noisy_vqc(fold_data, noise_p: float = 0.0, epochs: int = 40,
 			else:
 				bad += 1
 			if bad >= patience:
-				print(f"    [noise={noise_p}] early stop epoch {epoch+1}")
 				break
 
 	if best_state is not None:
@@ -162,7 +180,4 @@ def train_noisy_vqc(fold_data, noise_p: float = 0.0, epochs: int = 40,
 		"auc_roc": auc,
 		"accuracy": accuracy_score(y_val, preds),
 		"f1_score": f1_score(y_val, preds, zero_division=0),
-		"predictions": probs,
-		"pred_binary": preds,
-		"y_true": y_val,
 	}

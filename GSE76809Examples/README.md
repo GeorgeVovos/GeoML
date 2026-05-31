@@ -34,6 +34,8 @@ map of these examples and what each one actually found.
 | v07 | Cross-dataset replication of v06 | Only GSE76809 completed; replication question still open |
 | v08 | Small-sample efficiency sweep | Negative result: no small-data quantum advantage |
 | v09 | Quantum encoding ablation | Data-reuploading is best; dense_angle (2 feat/qubit) is worst — re-uploading drives performance |
+| v10A | Noisy simulation of v08 (small-data) | Sweeps depolarising noise x training-set size on `default.mixed` (pending run) |
+| v10B | Noisy simulation of v09 (encoding) | Sweeps depolarising noise x encoding on `default.mixed`; tests if re-uploading's edge survives noise (pending run) |
 
 ---
 
@@ -163,5 +165,7 @@ XGBoost.
 | Task | Binary classification |
 | Primary metric | AUC-ROC (plus accuracy, F1, calibration in later versions) |
 
-> Version **v10** extends this work (noise sweeps) and is documented in
-> its own folder.
+> Versions **v10A** and **v10B** extend this work with noisy
+> (`default.mixed`) simulations. v10A re-runs v08's small-data sweep and
+> v10B re-runs v09's encoding ablation under a depolarising-noise sweep;
+> each is documented in its own folder.
