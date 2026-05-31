@@ -3,10 +3,11 @@
     "version": "v09",
     "purpose": "encoding ablation on frozen v06 pipeline",
     "encodings": [
-      "angle",
-      "amplitude",
+      "data_reuploading",
       "iqp",
-      "data_reuploading"
+      "amplitude",
+      "angle",
+      "dense_angle"
     ],
     "seed": 2026,
     "runtime_minutes": 385.80561401049295,

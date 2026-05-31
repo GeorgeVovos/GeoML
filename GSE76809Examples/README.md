@@ -9,7 +9,7 @@ classifiers and quantum kernels) against strong **classical baselines**
 
 Each `vNN/` folder isolates one methodological change or one scientific
 question and has its own detailed `README.md`. This file is a one-page
-map of the first nine examples and what each one actually found.
+map of these examples and what each one actually found.
 
 > **Headline conclusion (v01–v09):** On GSE76809 there is **no robust
 > quantum advantage**. After leakage fixes and proper cross-validation,
