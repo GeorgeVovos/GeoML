@@ -90,9 +90,94 @@ python noise_sweep.py --noise 0 1e-3                        # 2-level subset
 python noise_sweep.py --encodings data_reuploading angle    # encoding subset
 ```
 
-The run is **resumable**: a checkpoint
-(`results/v10B_encoding_noise_partial.json`) is written after every
-`(encoding, noise, fold)` cell and reloaded on startup.
+### Resume behaviour
+
+The run is **resumable**. After every `(encoding, noise_p, fold)` cell the
+driver writes a checkpoint to `results/v10B_encoding_noise_partial.json`.
+On startup, if that file exists it is loaded and any cell where
+`len(aucs) > fold_idx` is skipped instantly. At most **one cell's worth
+of compute** (~10–40 min depending on `--epochs`) is lost on a crash —
+the partial cell is simply retried on the next run.
+
+> **Epoch-upgrade caveat.** The resume logic skips a cell based on the
+> number of completed folds, not the epoch count used. If you ran
+> `--epochs 10` on night 1 and want `--epochs 40` on night 2, delete the
+> partial checkpoint first so all cells are retrained at the higher
+> budget. Otherwise only *new* cells (new encodings or noise levels) will
+> use the higher epoch count.
+
+### Tuning the run length
+
+There are three independent axes to dial up, each with a different
+scientific payoff:
+
+**`--epochs` — training quality per cell**
+
+| Value | Time / cell | Notes |
+|-------|-------------|-------|
+| 10    | ~10 min     | Fast signal check; models underfit but noise signal is visible |
+| 20    | ~20 min     | Recommended minimum for a reportable result |
+| 40    | ~40 min     | Matches v09's reduced budget; best convergence |
+| 80    | ~80 min     | Matches v09 exactly; overkill under high noise |
+
+Most important for the `noise_p = 0` column — you want that reference to
+sit close to v09's noiseless 0.788.
+
+**`--noise` — resolution of the noise curve**
+
+| Config | Levels | What you learn |
+|--------|--------|----------------|
+| `0 1e-3 1e-2` | 3 | Does it survive at 1e-3? Does it die at 1e-2? |
+| `0 1e-4 1e-3 5e-3 1e-2` | 5 | Full curve — where exactly the cliff is |
+| `0 1e-4 5e-4 1e-3 5e-3 1e-2` | 6 | Fine-grained around the 1e-4–1e-3 region |
+
+More levels let you pinpoint the critical error rate at which
+re-uploading's advantage disappears — this is the headline number.
+
+**`--encodings` — breadth of the comparison**
+
+| Config | Value |
+|--------|-------|
+| `data_reuploading amplitude angle` | 3 — winner + two contrasts (default) |
+| `data_reuploading amplitude angle iqp` | 4 — adds IQP, which has CNOTs *inside* the encoding stage and may degrade faster |
+| `data_reuploading amplitude angle iqp dense_angle` | 5 — full v09 replication |
+
+`iqp` is the most scientifically interesting addition: its encoding emits
+extra CNOTs (2-qubit gates carry a 10× noise penalty), so it may degrade
+faster than `angle` despite being the stronger noiseless encoding.
+
+### Runtime estimates (5 folds, measured on CPU)
+
+| `--epochs` | noise levels | encodings | cells | Est. wall time |
+|------------|-------------|-----------|-------|----------------|
+| 10  | 3 | 3 | 45  | ~7–8 h  ← overnight minimum |
+| 20  | 5 | 3 | 75  | ~25 h   |
+| 40  | 5 | 3 | 75  | ~50 h   |
+| 20  | 5 | 5 | 125 | ~42 h   |
+| 40  | 5 | 5 | 125 | ~83 h   |
+
+### Recommended multi-night progression
+
+Because the run is resumable, you can build the full dataset incrementally —
+each night extends the previous checkpoint.
+
+**Night 1** — fast signal check (~7–8 h):
+```powershell
+python noise_sweep.py --noise 0 1e-3 1e-2 --encodings data_reuploading amplitude angle --epochs 10
+```
+
+**Night 2** — fill in the full noise curve with better training
+(skips night-1 cells, only runs new noise levels at `--epochs 20`):
+```powershell
+python noise_sweep.py --noise 0 1e-4 1e-3 5e-3 1e-2 --encodings data_reuploading amplitude angle --epochs 20
+```
+> Delete `v10B_encoding_noise_partial.json` first if you also want to
+> retrain the night-1 cells at 20 epochs.
+
+**Night 3** (optional) — add `iqp`, match v09's epoch budget:
+```powershell
+python noise_sweep.py --noise 0 1e-4 1e-3 5e-3 1e-2 --encodings data_reuploading amplitude angle iqp --epochs 40
+```
 
 ## Output
 
