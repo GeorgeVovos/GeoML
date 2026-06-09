@@ -114,6 +114,14 @@ def train_quantum_vqc(fold_data, encoding: str = "data_reuploading",
 	if encoding == "amplitude":
 		X_train = X_train / (np.linalg.norm(X_train, axis=1, keepdims=True) + 1e-10)
 		X_val_use = X_val / (np.linalg.norm(X_val, axis=1, keepdims=True) + 1e-10)
+	elif encoding in ("angle", "dense_angle", "iqp"):
+		# Bound the StandardScaler z-scores to (-1, 1) before they become
+		# rotation angles. Without this, |z| > 1 makes RY(x*pi) wrap past +/-pi
+		# around the Bloch circle, confounding the "single-shot encodings
+		# underperform" result with a scaling artefact. data_reuploading is
+		# exempt: its learned encoding weights already rescale the inputs.
+		X_train = np.tanh(X_train)
+		X_val_use = np.tanh(X_val)
 	else:
 		X_val_use = X_val
 

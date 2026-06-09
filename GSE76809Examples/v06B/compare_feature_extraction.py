@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import json
 import os
+import random
 import sys
 import time
 from pathlib import Path
@@ -64,6 +65,29 @@ from shared.stats_utils import (  # noqa: E402
 
 N_FOLDS = 5
 RANDOM_STATE = 2026
+
+
+def seed_everything(seed: int = RANDOM_STATE) -> None:
+	"""Seed every RNG that affects the run so results are reproducible.
+
+	The downstream VQC trainer (reused from v06) builds its model with
+	``torch.randn`` and shuffles batches with ``torch.randperm`` without an
+	internal seed, so per-fold AUCs varied between runs/machines. We can't
+	pass an ``init_seed`` through the uniform ``trainer(fold_data)`` call
+	(the classical trainers don't accept one), so instead we reseed the
+	global torch/numpy/random RNGs deterministically right before each
+	trainer call (see the fold loop). (The results JSON currently in
+	results/ predates this seeding.)
+	"""
+	import torch
+
+	os.environ["PYTHONHASHSEED"] = str(seed)
+	random.seed(seed)
+	np.random.seed(seed)
+	torch.manual_seed(seed)
+	if torch.cuda.is_available():
+		torch.cuda.manual_seed_all(seed)
+	torch.use_deterministic_algorithms(True, warn_only=True)
 
 # Downstream models keyed by name -> trainer callable
 MODELS = {
@@ -124,6 +148,7 @@ def _load_checkpoint(checkpoint: Path):
 
 def main():
 	start = time.time()
+	seed_everything(RANDOM_STATE)
 	out_dir = _THIS / "results"
 	out_dir.mkdir(exist_ok=True)
 	checkpoint = out_dir / "v06B_feature_extraction_partial.json"
@@ -142,6 +167,8 @@ def main():
 	cv = _load_checkpoint(checkpoint)
 
 	# --- 3. run every (extractor, model) combination -----------------------
+	extractor_names = list(EXTRACTORS)
+	model_names = list(MODELS)
 	for extractor_name, extractor_fn in EXTRACTORS.items():
 		for model_name, trainer in MODELS.items():
 			k = _key(extractor_name, model_name)
@@ -168,6 +195,14 @@ def main():
 					"y_train": y[tr_idx],
 					"y_val": y[va_idx],
 				}
+				# Deterministic per-(extractor, model, fold) reseed so the VQC's
+				# torch.randn weight init and torch.randperm batch order are
+				# reproducible without changing the uniform trainer signature.
+				combo_seed = (RANDOM_STATE
+							  + 1000 * fold_idx
+							  + 100 * extractor_names.index(extractor_name)
+							  + model_names.index(model_name))
+				seed_everything(combo_seed)
 				try:
 					res = trainer(fold_data)
 				except Exception as exc:

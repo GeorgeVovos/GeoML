@@ -45,13 +45,23 @@ operative factor and should be reported as such.
 
 ```powershell
 cd GSE76809Examples\v09
-python compare_encodings.py                       # all four encodings
+python compare_encodings.py                       # all five encodings
 python compare_encodings.py --encodings angle iqp # subset
 ```
 
-Runtime: the actual full 4-encoding run took **~386 min (~6.4 h)** on CPU
-(`runtime_minutes` in the results JSON), i.e. ~96 min per encoding for the
-5-fold CV — well above the earlier ~30 min/encoding guess.
+Runtime: the original four-encoding run (`angle`, `amplitude`, `iqp`,
+`data_reuploading`) took **~386 min (~6.4 h)** on CPU (`runtime_minutes`
+in the results JSON), i.e. ~96 min per encoding for the 5-fold CV.
+`dense_angle` was added afterwards in a separate run (`dense_angle_runtime_minutes`
+≈ 16.8 min, `encodings_updated` 2026-05-31), so the five-encoding results
+below come from two unseeded runs (see the reproducibility caveat below).
+
+> **The results table below predates two code changes** now in the runner:
+> (1) deterministic seeding (`seed_everything` + per-(fold, encoding)
+> `init_seed`) and (2) `tanh` input-bounding for the single-shot encodings.
+> Re-running `compare_encodings.py` will now be reproducible and will
+> produce *different* numbers from those shown. The published JSON has
+> **not** been regenerated.
 
 ## Results: Encoding Ablation (v09)
 
@@ -96,3 +106,33 @@ Preprocessing is reused from v06 (`sys.path` import).
 
 `results/v09_encoding_ablation.json` with per-encoding 5-fold AUC plus
 Wilcoxon + Nadeau-Bengio paired tests against `data_reuploading`.
+
+## Reproducibility caveat
+
+**The published `results/v09_encoding_ablation.json` was produced before the
+two fixes below and has not been regenerated.** The numbers in the results
+table above therefore reflect the *old* (unseeded, un-rescaled) code.
+
+1. **Deterministic seeding (added).** The runner now calls `seed_everything`
+   before preprocessing and passes a deterministic per-(fold, encoding)
+   `init_seed` into `train_quantum_vqc`, mirroring v09C. Previously the VQC
+   weight init (`torch.randn`) and batch shuffling (`torch.randperm`) were
+   unseeded, so per-fold AUCs and the borderline Holm flag differed between
+   machines/runs — and `dense_angle` was in fact run in a separate later
+   session. With the old code a second machine/run could flip which encoding
+   clears α = 0.05 (this happened in v09C between PC1 and PC2).
+
+2. **Input bounding for single-shot encodings (added).** The non-reuploading
+   encodings consume the same `StandardScaler` z-scores as the VQC input;
+   `angle`/`dense_angle` multiply those z-scores by π, so any |z| > 1 used to
+   wrap past ±π around the Bloch circle, confounding "single-shot encodings
+   underperform" with a scaling artefact. The driver now applies `tanh` to
+   the inputs for `angle`, `dense_angle` and `iqp` (bounding them to (-1, 1)
+   before the π scaling); `data_reuploading` is exempt because its learned
+   encoding weights already rescale the inputs, and `amplitude` keeps its
+   unit-norm normalisation.
+
+Until the ablation is re-run with both fixes, treat the absolute numbers as
+one sample from a distribution; the large, uniform effect sizes (d > 1.3)
+are the more reliable signal than the exact AUCs or the borderline Holm
+p-values.
