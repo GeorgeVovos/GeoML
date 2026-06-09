@@ -43,6 +43,35 @@ data/
 
 ---
 
+## Quantum vs Classical ML Experiments (GSE76809)
+
+[`GSE76809Examples/`](GSE76809Examples/README.md) contains a versioned
+progression of experiments classifying **SSc vs Healthy** from GSE76809,
+benchmarking variational quantum classifiers and quantum kernels against tuned
+classical baselines (MLP, XGBoost, SVM, logistic regression). See
+[GSE76809Examples/README.md](GSE76809Examples/README.md) for the full map.
+
+**Headline conclusion (v01\u2013v09C):** on GSE76809 there is **no robust quantum
+advantage**. After leakage fixes and proper cross-validation the quantum VQC
+becomes *competitive*, but well-tuned classical methods (especially XGBoost)
+remain at least as strong. The quantum model's competitiveness traces almost
+entirely to the **data-reuploading encoding**, not to anything inherently
+quantum.
+
+**Latest run \u2014 v09C encoding ablation** ([details](GSE76809Examples/v09C/README.md)):
+combining each upstream encoding (angle / dense_angle / amplitude / iqp) with
+the learned data-reuploading **at every layer** was tested over 5-fold CV
+(25 trainings, ~12.9 h). Every combined encoding *reduced* AUC versus pure
+reuploading (**0.812**) > iqp (0.658) > amplitude (0.587) > angle (0.539) >
+dense_angle (0.431, *below random*); only `amplitude_combined`'s drop is
+Holm-significant. Known caveats: the fixed encodings receive StandardScaler
+z-scores rather than [0,1]-scaled inputs (angle mis-scaling), and the validation
+fold is reused for both early-stopping and reporting (optimistic AUCs). See the
+v09C README's *Problems / unexpected findings* section for the full anomaly
+review.
+
+---
+
 ## Curated GEO Datasets for ML
 
 Datasets ranked by ML suitability: sample size, clear labels, human tissue,

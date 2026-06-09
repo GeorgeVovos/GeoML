@@ -1,0 +1,118 @@
+{
+  "metadata": {
+    "version": "v09C",
+    "purpose": "ablation: upstream encoding applied at EVERY layer combined with learned per-layer data-reuploading vs pure data_reuploading (v09C counterpart of v09B's layer-0-only encoding)",
+    "encodings": [
+      "data_reuploading",
+      "angle_combined",
+      "dense_angle_combined",
+      "amplitude_combined",
+      "iqp_combined"
+    ],
+    "seed": 2026,
+    "runtime_minutes": 771.9428112427394
+  },
+  "cv": {
+    "data_reuploading": {
+      "aucs": [
+        0.7612612612612614,
+        0.7792792792792792,
+        0.8888888888888888,
+        0.9768518518518519,
+        0.6527777777777779
+      ],
+      "mean_auc": 0.8118118118118118,
+      "std_auc": 0.1114312688990357
+    },
+    "angle_combined": {
+      "aucs": [
+        0.44594594594594594,
+        0.4144144144144144,
+        0.6064814814814814,
+        0.6574074074074074,
+        0.5694444444444444
+      ],
+      "mean_auc": 0.5387387387387387,
+      "std_auc": 0.09346786880396392
+    },
+    "dense_angle_combined": {
+      "aucs": [
+        0.36936936936936937,
+        0.42342342342342343,
+        0.6157407407407407,
+        0.2916666666666667,
+        0.4537037037037037
+      ],
+      "mean_auc": 0.43078078078078086,
+      "std_auc": 0.10762330239153646
+    },
+    "amplitude_combined": {
+      "aucs": [
+        0.5067567567567568,
+        0.545045045045045,
+        0.7175925925925927,
+        0.6597222222222222,
+        0.5069444444444445
+      ],
+      "mean_auc": 0.5872122122122123,
+      "std_auc": 0.08596605141758382
+    },
+    "iqp_combined": {
+      "aucs": [
+        0.5720720720720721,
+        0.8018018018018018,
+        0.5046296296296297,
+        0.5949074074074074,
+        0.8148148148148149
+      ],
+      "mean_auc": 0.6576451451451452,
+      "std_auc": 0.12661435091062617
+    }
+  },
+  "paired_stats_vs_data_reuploading": [
+    {
+      "encoding": "angle_combined",
+      "vs": "data_reuploading",
+      "mean_diff": -0.27307307307307316,
+      "wilcoxon_p": 0.0625,
+      "nb_corrected_p": 0.02074632846179436,
+      "cohens_d": -2.3749317707788054,
+      "effect_size": "large",
+      "holm_adjusted_p": 0.06223898538538308,
+      "holm_significant": false
+    },
+    {
+      "encoding": "dense_angle_combined",
+      "vs": "data_reuploading",
+      "mean_diff": -0.381031031031031,
+      "wilcoxon_p": 0.0625,
+      "nb_corrected_p": 0.03754863107100914,
+      "cohens_d": -3.1111245968706016,
+      "effect_size": "large",
+      "holm_adjusted_p": 0.07509726214201828,
+      "holm_significant": false
+    },
+    {
+      "encoding": "amplitude_combined",
+      "vs": "data_reuploading",
+      "mean_diff": -0.22459959959959952,
+      "wilcoxon_p": 0.0625,
+      "nb_corrected_p": 0.007936305084081274,
+      "cohens_d": -2.018638885950352,
+      "effect_size": "large",
+      "holm_adjusted_p": 0.0317452203363251,
+      "holm_significant": true
+    },
+    {
+      "encoding": "iqp_combined",
+      "vs": "data_reuploading",
+      "mean_diff": -0.15416666666666667,
+      "wilcoxon_p": 0.3125,
+      "nb_corrected_p": 0.3980798643714427,
+      "cohens_d": -1.1561752712543591,
+      "effect_size": "large",
+      "holm_adjusted_p": 0.3980798643714427,
+      "holm_significant": false
+    }
+  ]
+}
