@@ -96,6 +96,17 @@ For each downstream model, each learned extractor is compared against the
 
 ## Results (5-fold CV, 212 training samples, runtime ≈ 238 min)
 
+> **The results below predate the deterministic-seeding change** now in
+> `compare_feature_extraction.py`. The downstream VQC trainer (reused from
+> v06) builds its weights with `torch.randn` and shuffles batches with
+> `torch.randperm` without an internal seed, so the VQC column (and its
+> relatively high `anova_pca` std of 0.158) was not reproducible across
+> runs. The runner now calls `seed_everything` once and reseeds the global
+> torch/numpy RNGs with a deterministic per-(extractor, model, fold) seed
+> right before each trainer call. Re-running will now be reproducible and
+> will produce *different* numbers from those shown; the published JSON has
+> **not** been regenerated.
+
 ### Mean AUC ± std by (extractor × model)
 
 | Extractor      | VQC           | MLP           | XGBoost       | SVM           |
