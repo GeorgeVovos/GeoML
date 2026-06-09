@@ -1,0 +1,46 @@
+{
+  "quantum_v02": {
+    "model": "Quantum v02 (PennyLane VQC + re-uploading)",
+    "accuracy": 0.8703703703703703,
+    "f1_score": 0.9213483146067416,
+    "auc_roc": 0.8804347826086957,
+    "f1_healthy": 0.631578947368421,
+    "train_time_seconds": 638.284592628479,
+    "n_qubits": 8,
+    "n_layers": 3,
+    "n_params": 3729,
+    "epochs_run": 17,
+    "best_epoch_auc": 0.8804347826086957
+  },
+  "classical_v02": {
+    "model": "Classical v02 (Residual MLP + GELU)",
+    "accuracy": 0.7777777777777778,
+    "f1_score": 0.8571428571428571,
+    "auc_roc": 0.9402173913043479,
+    "f1_healthy": 0.5,
+    "train_time_seconds": 1.4570610523223877,
+    "hidden_sizes": [
+      256,
+      128,
+      64,
+      32
+    ],
+    "n_params": 139169,
+    "epochs_run": 18,
+    "best_epoch_auc": 0.9402173913043479
+  },
+  "v01_baseline": {
+    "quantum": {
+      "accuracy": 0.8333,
+      "f1_score": 0.9072,
+      "auc_roc": 0.5707,
+      "train_time_seconds": 355.1
+    },
+    "classical": {
+      "accuracy": 0.8519,
+      "f1_score": 0.9167,
+      "auc_roc": 0.837,
+      "train_time_seconds": 1.2
+    }
+  }
+}

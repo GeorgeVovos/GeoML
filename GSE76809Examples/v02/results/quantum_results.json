@@ -1,0 +1,13 @@
+{
+  "model": "Quantum v02 (PennyLane VQC + re-uploading)",
+  "accuracy": 0.8703703703703703,
+  "f1_score": 0.9213483146067416,
+  "auc_roc": 0.8804347826086957,
+  "f1_healthy": 0.631578947368421,
+  "train_time_seconds": 638.284592628479,
+  "n_qubits": 8,
+  "n_layers": 3,
+  "n_params": 3729,
+  "epochs_run": 17,
+  "best_epoch_auc": 0.8804347826086957
+}

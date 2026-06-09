@@ -1,0 +1,14 @@
+{
+  "model": "Classical (PyTorch MLP)",
+  "accuracy": 0.8518518518518519,
+  "f1_score": 0.9166666666666666,
+  "auc_roc": 0.8369565217391304,
+  "train_time_seconds": 1.2143464088439941,
+  "hidden_sizes": [
+    128,
+    64,
+    32
+  ],
+  "n_params": 17345,
+  "epochs": 50
+}

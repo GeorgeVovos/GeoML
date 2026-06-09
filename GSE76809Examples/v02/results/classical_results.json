@@ -1,0 +1,17 @@
+{
+  "model": "Classical v02 (Residual MLP + GELU)",
+  "accuracy": 0.7777777777777778,
+  "f1_score": 0.8571428571428571,
+  "auc_roc": 0.9402173913043479,
+  "f1_healthy": 0.5,
+  "train_time_seconds": 1.4570610523223877,
+  "hidden_sizes": [
+    256,
+    128,
+    64,
+    32
+  ],
+  "n_params": 139169,
+  "epochs_run": 18,
+  "best_epoch_auc": 0.9402173913043479
+}

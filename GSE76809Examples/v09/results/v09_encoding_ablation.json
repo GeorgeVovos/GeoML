@@ -1,0 +1,120 @@
+{
+  "metadata": {
+    "version": "v09",
+    "purpose": "encoding ablation on frozen v06 pipeline",
+    "encodings": [
+      "data_reuploading",
+      "iqp",
+      "amplitude",
+      "angle",
+      "dense_angle"
+    ],
+    "seed": 2026,
+    "runtime_minutes": 385.80561401049295,
+    "encodings_updated": "2026-05-31 01:11",
+    "dense_angle_runtime_minutes": 16.793546986579894
+  },
+  "cv": {
+    "angle": {
+      "aucs": [
+        0.5360360360360361,
+        0.6396396396396395,
+        0.5509259259259258,
+        0.3912037037037037,
+        0.6203703703703703
+      ],
+      "mean_auc": 0.5476351351351351,
+      "std_auc": 0.08760297305168413
+    },
+    "amplitude": {
+      "aucs": [
+        0.5045045045045046,
+        0.7072072072072072,
+        0.5972222222222222,
+        0.6458333333333334,
+        0.4814814814814815
+      ],
+      "mean_auc": 0.5872497497497497,
+      "std_auc": 0.0847997408669753
+    },
+    "iqp": {
+      "aucs": [
+        0.6216216216216217,
+        0.6171171171171171,
+        0.46759259259259256,
+        0.7222222222222222,
+        0.8101851851851852
+      ],
+      "mean_auc": 0.6477477477477478,
+      "std_auc": 0.11489913694859241
+    },
+    "data_reuploading": {
+      "aucs": [
+        0.7432432432432433,
+        0.8153153153153154,
+        0.7453703703703703,
+        0.9166666666666667,
+        0.7175925925925926
+      ],
+      "mean_auc": 0.7876376376376376,
+      "std_auc": 0.07221943871985366
+    },
+    "dense_angle": {
+      "aucs": [
+        0.33333333333333337,
+        0.7612612612612613,
+        0.36111111111111105,
+        0.2962962962962963,
+        0.6805555555555556
+      ],
+      "mean_auc": 0.4865115115115115,
+      "std_auc": 0.19417062538213864
+    }
+  },
+  "paired_stats_vs_data_reuploading": [
+    {
+      "encoding": "angle",
+      "vs": "data_reuploading",
+      "mean_diff": -0.24000250250250255,
+      "wilcoxon_p": 0.0625,
+      "nb_corrected_p": 0.09588661547221267,
+      "cohens_d": -2.673932944488629,
+      "effect_size": "large",
+      "holm_adjusted_p": 0.287659846416638,
+      "holm_significant": false
+    },
+    {
+      "encoding": "amplitude",
+      "vs": "data_reuploading",
+      "mean_diff": -0.20038788788788786,
+      "wilcoxon_p": 0.0625,
+      "nb_corrected_p": 0.012188656028857325,
+      "cohens_d": -2.275643933470625,
+      "effect_size": "large",
+      "holm_adjusted_p": 0.0487546241154293,
+      "holm_significant": true
+    },
+    {
+      "encoding": "iqp",
+      "vs": "data_reuploading",
+      "mean_diff": -0.13988988988988982,
+      "wilcoxon_p": 0.125,
+      "nb_corrected_p": 0.21319685444890224,
+      "cohens_d": -1.3038615059512695,
+      "effect_size": "large",
+      "holm_adjusted_p": 0.2937504969105591,
+      "holm_significant": false
+    },
+    {
+      "encoding": "dense_angle",
+      "vs": "data_reuploading",
+      "mean_diff": -0.3011261261261261,
+      "wilcoxon_p": 0.0625,
+      "nb_corrected_p": 0.14687524845527955,
+      "cohens_d": -1.8386086649374385,
+      "effect_size": "large",
+      "holm_adjusted_p": 0.2937504969105591,
+      "holm_significant": false
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+Models: ['quantum_vqc', 'classical_mlp', 'classical_svm', 'classical_xgb', 'classical_logreg']
+N_per_class grid: [10, 20]
+Subsample seeds: 20, VQC init seeds: 3
+Loading GSE76809...
+  usable: 266 samples, 9043 genes after NaN drop
+  after variance filter: 4521 genes
+
+========================================================================
+[N_per_class=10  total=20]
+========================================================================
+
+  -- subsample seed 461057 (1/20) --
+    VQC parameters: 1473
+    Epoch 15/80 — Loss: 0.3168, Val AUC: 0.6304 (best: 0.6304)
+    Epoch 30/80 — Loss: 0.0617, Val AUC: 0.6386 (best: 0.6576)
+    Epoch 45/80 — Loss: 0.0144, Val AUC: 0.6522 (best: 0.6576)
+    Epoch 60/80 — Loss: 0.0100, Val AUC: 0.6549 (best: 0.6576)
+    Early stopping at epoch 66
+    → AUC: 0.6549, Acc: 0.5185, F1: 0.6286
+    [quantum_vqc       ] init=0   AUC=0.6549  (142.7s)
+    VQC parameters: 1473
+    Epoch 15/80 — Loss: 0.3856, Val AUC: 0.6413 (best: 0.6413)
+    Epoch 30/80 — Loss: 0.0887, Val AUC: 0.6821 (best: 0.6821)
+    Epoch 45/80 — Loss: 0.0145, Val AUC: 0.6793 (best: 0.6875)
+    Epoch 60/80 — Loss: 0.0089, Val AUC: 0.6712 (best: 0.6875)
+    Epoch 75/80 — Loss: 0.0073, Val AUC: 0.6685 (best: 0.6875)
+    Early stopping at epoch 80
+    → AUC: 0.6685, Acc: 0.5741, F1: 0.6933
+    [quantum_vqc       ] init=1   AUC=0.6685  (170.9s)
+    VQC parameters: 1473
+    Epoch 15/80 — Loss: 0.3587, Val AUC: 0.6386 (best: 0.6386)
+    Epoch 30/80 — Loss: 0.0620, Val AUC: 0.6821 (best: 0.6984)
+    Epoch 45/80 — Loss: 0.0164, Val AUC: 0.6793 (best: 0.6984)
+    Epoch 60/80 — Loss: 0.0063, Val AUC: 0.6712 (best: 0.6984)
+    Early stopping at epoch 69
+    → AUC: 0.6712, Acc: 0.5741, F1: 0.6849
+    [quantum_vqc       ] init=2   AUC=0.6712  (147.0s)
+    MLP parameters: 1617
+    Epoch 15/80 — Loss: 0.2526, Val AUC: 0.7011 (best: 0.7473)
+    Epoch 30/80 — Loss: 0.2134, Val AUC: 0.6902 (best: 0.7473)
+    Epoch 45/80 — Loss: 0.1615, Val AUC: 0.6984 (best: 0.7473)
+    Early stopping at epoch 48
+    → AUC: 0.6984, Acc: 0.5926, F1: 0.7027
+    [classical_mlp     ] -        AUC=0.6984  (0.1s)
+    RBF SVM best params: C=10.0, gamma=scale
+    → AUC: 0.6196, Acc: 0.4630, F1: 0.5538
+    [classical_svm     ] -        AUC=0.6196  (9.3s)
+    XGBoost best: depth=2, n_est=50, lr=0.05, mcw=1
+    → AUC: 0.6984, Acc: 0.6481, F1: 0.7654
+    [classical_xgb     ] -        AUC=0.6984  (0.4s)
+    LR-L1 best C=1.0 → AUC: 0.6821, Acc: 0.6111, F1: 0.7200
+    [classical_logreg  ] -        AUC=0.6821  (0.0s)
+
+  -- subsample seed 32134 (2/20) --
+    VQC parameters: 1473
+    Epoch 15/80 — Loss: 0.3357, Val AUC: 0.5788 (best: 0.6957)
+    Epoch 30/80 — Loss: 0.0355, Val AUC: 0.6576 (best: 0.6957)
+    Epoch 45/80 — Loss: 0.0063, Val AUC: 0.6549 (best: 0.6957)
+    Early stopping at epoch 48
+    → AUC: 0.6549, Acc: 0.4630, F1: 0.5538
+    [quantum_vqc       ] init=0   AUC=0.6549  (102.9s)
+    VQC parameters: 1473
+    Epoch 15/80 — Loss: 0.3518, Val AUC: 0.5870 (best: 0.6005)
+    Epoch 30/80 — Loss: 0.0412, Val AUC: 0.5707 (best: 0.6168)
+    Epoch 45/80 — Loss: 0.0085, Val AUC: 0.5408 (best: 0.6168)
+    Epoch 60/80 — Loss: 0.0060, Val AUC: 0.5380 (best: 0.6168)
+    Early stopping at epoch 63
+    → AUC: 0.5380, Acc: 0.3519, F1: 0.4262
+    [quantum_vqc       ] init=1   AUC=0.5380  (132.7s)
+    VQC parameters: 1473
+    Epoch 15/80 — Loss: 0.3631, Val AUC: 0.6250 (best: 0.6359)
