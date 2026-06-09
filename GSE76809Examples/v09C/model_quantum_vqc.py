@@ -1,12 +1,11 @@
 """Per-layer reuploading + upstream-encoding VQC for v09C.
 
-Identical to v09B's CombinedEncodingVQC in EVERY respect (preprocessing, the
+Shares the v06/v09 setup in EVERY respect (preprocessing, the
 4-qubit / 8-layer variational stack, post-net, optimiser, training schedule,
-CV folds and random seed) EXCEPT one architectural choice:
+CV folds and random seed). The defining architectural choice of v09C:
 
-  v09B: the upstream encoding gate block is applied at layer 0 ONLY.
-  v09C: the upstream encoding gate block is applied at EVERY layer, interleaved
-        with the learned data-reuploading and the variational gates.
+  the upstream encoding gate block is applied at EVERY layer, interleaved
+  with the learned data-reuploading and the variational gates.
 
 This is the literal "learned per-layer data-reuploading module applied in
 combination with each encoding" reading of the template, and matches the
@@ -50,7 +49,7 @@ def _build_qnode(upstream_gate_fn):
     @qml.qnode(dev, interface="torch", diff_method="backprop")
     def circuit(inputs, weights_enc, weights_var):
         for layer in range(N_LAYERS):
-            # ① Upstream encoding — EVERY layer in v09C (vs layer 0 only in v09B)
+            # ① Upstream encoding — applied at EVERY layer in v09C
             if upstream_gate_fn is not None:
                 upstream_gate_fn(inputs)
             # ② Learned data-reuploading — every layer, all experiments
@@ -64,7 +63,7 @@ def _build_qnode(upstream_gate_fn):
             # ④ Entanglement ring
             for q in range(N_QUBITS):
                 qml.CNOT(wires=[q, (q + 1) % N_QUBITS])
-        # Multi-basis measurement: PauliZ, PauliX, PauliY — 12 outputs (same as v06/v09/v09B)
+        # Multi-basis measurement: PauliZ, PauliX, PauliY — 12 outputs (same as v06/v09)
         out = []
         for q in range(N_QUBITS):
             out.append(qml.expval(qml.PauliZ(q)))
@@ -91,14 +90,14 @@ class CombinedEncodingVQC(nn.Module):
         self.circuit = _build_qnode(upstream_gate_fn)
 
         # Learned reuploading weights — always a trainable parameter for all experiments.
-        # Shape: (N_LAYERS, N_QUBITS, N_FEATURES) = (8, 4, 16), identical to v09B.
+        # Shape: (N_LAYERS, N_QUBITS, N_FEATURES) = (8, 4, 16).
         self.weights_enc = nn.Parameter(
             torch.randn(N_LAYERS, N_QUBITS, N_FEATURES) * 0.1
         )
         self.weights_var = nn.Parameter(
             torch.randn(N_LAYERS, N_QUBITS, 2) * 0.3
         )
-        # Post-net: 12 inputs (3 * N_QUBITS), same as v06/v09/v09B
+        # Post-net: 12 inputs (3 * N_QUBITS), same as v06/v09
         self.post_net = nn.Sequential(
             nn.Linear(3 * N_QUBITS, 64),
             nn.GELU(),
@@ -129,7 +128,7 @@ def train_quantum_vqc(
     random_state: int = 2026,
     init_seed=None,
 ) -> dict:
-    """Train one fold.  Identical procedure to v09/v09B — only the encoding-site changes."""
+    """Train one fold.  Identical procedure to v09 — only the encoding-site changes."""
     X_train = fold_data["X_train"]
     X_val   = fold_data["X_val"]
     y_train = fold_data["y_train"]

@@ -7,9 +7,9 @@ Runs 5-fold CV for each of five encoding experiments:
   amplitude_combined    — amplitude encoding every layer + learned reuploading
   iqp_combined          — IQP feature map every layer + learned reuploading
 
-Identical to v09B in preprocessing, variational stack, post-net, optimiser,
-schedule, CV folds and seed. The ONLY difference is that the upstream encoding
-is applied at EVERY layer (v09C) rather than at layer 0 only (v09B).
+Identical to v09 in preprocessing, variational stack, post-net, optimiser,
+schedule, CV folds and seed. The defining choice of v09C is that the upstream
+encoding is applied at EVERY layer.
 
 Resumable: after every encoding/fold a partial checkpoint is written. On
 re-launch the checkpoint is loaded and completed fold/encoding combos are
@@ -187,8 +187,7 @@ def main() -> None:
             "version":   "v09C",
             "purpose":   (
                 "ablation: upstream encoding applied at EVERY layer combined with "
-                "learned per-layer data-reuploading vs pure data_reuploading "
-                "(v09C counterpart of v09B's layer-0-only encoding)"
+                "learned per-layer data-reuploading vs pure data_reuploading"
             ),
             "encodings":        args.encodings,
             "seed":             2026,

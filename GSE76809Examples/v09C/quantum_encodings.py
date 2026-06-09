@@ -1,17 +1,12 @@
 """Upstream encoding gate fragments for v09C's per-layer reuploading combination ablation.
 
-IDENTICAL gate functions to v09B — the ONLY architectural difference between
-v09B and v09C is *where* these gates are applied inside the circuit:
+In v09C the upstream gates run at EVERY layer, in combination with the learned
+reuploading at every layer (the literal "applied in combination ... per-layer"
+reading of the original template, and the canonical Pérez-Salinas data-reuploading
+architecture).
 
-  v09B: upstream gates run at layer 0 only (one-shot state preparation), then the
-        learned reuploading runs every layer on the raw features.
-  v09C: upstream gates run at EVERY layer, in combination with the learned
-        reuploading at every layer (the literal "applied in combination ...
-        per-layer" reading of the original template, and the canonical
-        Pérez-Salinas data-reuploading architecture).
-
-Both versions share the same learned data-reuploading module (weights_enc of
-shape (N_LAYERS, N_QUBITS, N_FEATURES)).
+The learned data-reuploading module (weights_enc of shape
+(N_LAYERS, N_QUBITS, N_FEATURES)) runs every layer for all experiments.
 
 Experiments:
   data_reuploading      — no upstream gates; pure learned reuploading (canonical ref)
@@ -23,8 +18,7 @@ Experiments:
 Note: amplitude_combined applies AmplitudeEmbedding at EVERY layer in v09C.
 Because AmplitudeEmbedding re-prepares the full statevector, applying it
 mid-circuit *overwrites* the accumulated state each layer. This is a real,
-intentional architectural consequence that the v09B-vs-v09C comparison is
-designed to expose.
+intentional architectural consequence of the every-layer design.
 """
 
 from __future__ import annotations

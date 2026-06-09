@@ -1,21 +1,19 @@
-# v09C — Per-Layer Encoding + Learned Reuploading (vs v09B)
+# v09C — Per-Layer Encoding + Learned Reuploading
 
 ## Goal
 
-v09C is the sibling of v09B. Both combine a learned per-layer data-reuploading
-module with four upstream encodings (angle, dense_angle, amplitude, iqp). The
-**only** difference is *where the upstream encoding is applied*:
+v09C combines a learned per-layer data-reuploading module with four upstream
+encodings (angle, dense_angle, amplitude, iqp), applied at **every layer**
+(interleaved) — the literal "applied in combination ... per-layer" reading of
+the original template, and the canonical Pérez-Salinas data-reuploading
+architecture where the data is re-injected at every layer.
 
-| | Upstream encoding applied | Reading of the template |
-|---|---|---|
-| **v09B** | layer 0 only (state preparation) | encoding "seeds" the circuit |
-| **v09C** | **every layer** (interleaved) | encoding "applied in combination ... per-layer" |
+Each combined encoding is compared against **pure learned reuploading**
+(`data_reuploading`, no upstream gates) as the reference, to test whether
+stacking a fixed encoding on top of the learned reuploading at every layer
+adds anything on GSE76809.
 
-v09C matches the canonical Pérez-Salinas data-reuploading architecture, where
-the data is re-injected at every layer. Comparing the two isolates a single
-architectural decision and shows whether it actually changes results.
-
-## What is frozen (identical to v09B)
+## What is frozen (identical to v06/v09)
 
 | Component | Value |
 |-----------|-------|
@@ -31,9 +29,10 @@ architectural decision and shows whether it actually changes results.
 | Seed | 2026 |
 | Learned reuploading | `weights_enc` (8, 4, 16), trainable, every experiment |
 
-## What varies vs v09B
+## What varies across experiments
 
-The upstream encoding gate block fires at **every** layer instead of only layer 0.
+The upstream encoding gate block fires at **every** layer (or not at all, for
+the `data_reuploading` reference).
 
 | Experiment | Upstream encoding (every layer) | Learned reuploading (every layer) |
 |---|---|---|
@@ -73,7 +72,7 @@ Results file: [results/v09C_encoding_ablation.json](results/v09C_encoding_ablati
 learned data-reuploading.** Stacking a fixed encoding on top of the learned
 reuploading at every layer never helps on GSE76809; reuploading alone is best
 (0.812). Only `amplitude_combined`'s drop is Holm-significant. This corroborates
-v09/v09B and confirms the README's prediction that re-applying an encoding every
+v09 and confirms the README's prediction that re-applying an encoding every
 layer tends to overwrite the accumulated computation.
 
 ## Problems / unexpected findings & improvements
@@ -115,10 +114,6 @@ layer tends to overwrite the accumulated computation.
    only ~8 healthy (minority) samples per validation fold, single-fold AUCs are
    very noisy and the baseline's "win" leans on folds 3–4. Repeated CV / more
    folds / a larger minority class would stabilise this.
-8. **Stale v09B comparison.** `compare_versions.py` and
-   `results/v09B_vs_v09C_comparison.json` are referenced below, but `v09B/` is
-   not present in the workspace, so the headline v09B-vs-v09C delta has **not**
-   been computed. Run the layer-0-only v09B to enable it.
 
 ## Cross-machine reproducibility
 
@@ -159,7 +154,7 @@ result sets above predate that fix; re-running both machines now should match.
 ```
 every layer l:
    if upstream encoding exists:
-       upstream_gate_fn(x)              ← v09C: EVERY layer (v09B: l==0 only)
+       upstream_gate_fn(x)              ← v09C: applied at EVERY layer
 
    for q in 0..3:
        RY( dot(weights_enc[l,q], x) )   ← learned reuploading
@@ -173,14 +168,11 @@ every layer l:
 ## How to run
 
 ```powershell
-# 1. Run the v09C ablation (~8 h on CPU, resumable)
+# Run the v09C ablation (~8 h on CPU, resumable)
 python "GSE76809Examples\v09C\compare_encodings.py"
 
 # Subset
 python "GSE76809Examples\v09C\compare_encodings.py" --encodings data_reuploading iqp_combined
-
-# 2. Compare v09C against v09B (instant; needs both result JSONs)
-python "GSE76809Examples\v09C\compare_versions.py"
 ```
 
 The runner is **resumable**: after every encoding/fold it writes
@@ -189,31 +181,22 @@ resume; completed fold/encoding combinations are skipped automatically.
 
 ## How to interpret
 
-### Within v09C (vs `data_reuploading` reference)
-Same interpretation as v09B: a significant positive `mean_diff` means the
-per-layer encoding adds information the learned reuploading cannot recover on
-its own.
+Each combined encoding is compared against the `data_reuploading` reference: a
+significant positive `mean_diff` means the per-layer encoding adds information
+the learned reuploading cannot recover on its own. On GSE76809 every combined
+encoding instead *reduces* AUC (see Results) — stacking a fixed encoding on top
+of the learned reuploading never helps. `amplitude_combined` is expected to be
+the most damaged: `AmplitudeEmbedding` re-prepares the full statevector, so
+applying it every layer **overwrites** the accumulated computation.
 
-### v09C vs v09B (`compare_versions.py`)
-This is the headline comparison. For each encoding it prints the mean AUC under
-both architectures, Δ = v09C − v09B, Cohen's d, and a Wilcoxon paired test:
+## A note on the every-layer choice
 
-- **Δ > 0** — applying the encoding every layer helps; re-injecting data is
-  beneficial (expected for `angle`, `dense_angle`, `iqp`).
-- **Δ ≈ 0** — the architectural choice does not matter for that encoding.
-- **Δ < 0** — layer-0-only is better. Strongly expected for `amplitude_combined`:
-  `AmplitudeEmbedding` re-prepares the full statevector, so applying it every
-  layer **overwrites** the accumulated computation, crippling the circuit. This
-  is the clearest example of an architectural decision producing genuinely
-  different results.
-
-## Which is "more correct"?
-
-For rotation-style encodings (angle, dense_angle, iqp), **v09C is the more
-faithful implementation** of the template's "per-layer ... in combination"
-wording and of standard data-reuploading. For `amplitude`, layer-0-only (v09B)
-is the only sensible choice. `compare_versions.py` quantifies exactly how much
-each interpretation matters on this dataset.
+For rotation-style encodings (angle, dense_angle, iqp), applying the encoding
+at every layer is the faithful implementation of the template's "per-layer ...
+in combination" wording and of standard data-reuploading. For `amplitude`,
+applying `AmplitudeEmbedding` at every layer is architecturally destructive
+(it re-prepares the statevector each layer), which is why `amplitude_combined`
+degrades the most.
 
 ## Files
 
@@ -222,7 +205,6 @@ each interpretation matters on this dataset.
 | `quantum_encodings.py` | Upstream gate functions + `UPSTREAM_GATES` dict |
 | `model_quantum_vqc.py` | `CombinedEncodingVQC` (every-layer encoding) + `train_quantum_vqc` |
 | `compare_encodings.py` | 5-fold CV runner; resumable; writes results JSON |
-| `compare_versions.py` | Loads v09B + v09C JSONs; paired AUC comparison |
 | `README.md` | This file |
 
 ## Output
@@ -230,4 +212,3 @@ each interpretation matters on this dataset.
 - `results/v09C_encoding_ablation.json` — per-encoding 5-fold AUCs, mean/std,
   paired tests vs `data_reuploading` (Wilcoxon + Nadeau–Bengio, Holm-corrected).
 - `results/v09C_encoding_ablation_partial.json` — rolling checkpoint.
-- `results/v09B_vs_v09C_comparison.json` — per-encoding v09B-vs-v09C deltas.

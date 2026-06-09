@@ -1,7 +1,7 @@
 {
   "metadata": {
     "version": "v09C",
-    "purpose": "ablation: upstream encoding applied at EVERY layer combined with learned per-layer data-reuploading vs pure data_reuploading (v09C counterpart of v09B's layer-0-only encoding)",
+    "purpose": "ablation: upstream encoding applied at EVERY layer combined with learned per-layer data-reuploading vs pure data_reuploading",
     "encodings": [
       "data_reuploading",
       "angle_combined",

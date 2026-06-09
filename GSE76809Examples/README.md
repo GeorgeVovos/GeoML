@@ -155,8 +155,6 @@ re-run would MinMax-scale first); and (2) the validation fold is used for both
 early-stopping and reporting, so AUCs are optimistically biased. **Takeaway:**
 on GSE76809, stacking a fixed encoding on top of reuploading never helps and
 often hurts — consistent with v09, where re-uploading alone drives performance.
-The headline v09B (layer-0-only) vs v09C (every-layer) delta is still pending
-(v09B not yet run).
 
 ---
 
