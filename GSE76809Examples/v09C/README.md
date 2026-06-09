@@ -120,6 +120,40 @@ layer tends to overwrite the accumulated computation.
    not present in the workspace, so the headline v09B-vs-v09C delta has **not**
    been computed. Run the layer-0-only v09B to enable it.
 
+## Cross-machine reproducibility
+
+The ablation was run independently on two PCs with the **same `seed: 2026`**.
+The results files are [results/v09C_encoding_ablation.json](results/v09C_encoding_ablation.json)
+(PC1, 771.9 min) and [resultsPC2/v09C_encoding_ablation.json](resultsPC2/v09C_encoding_ablation.json)
+(PC2, 403.7 min).
+
+| Encoding | PC1 mean AUC | PC2 mean AUC | Δ |
+|---|---|---|---|
+| `data_reuploading` (ref) | 0.812 | 0.782 | −0.030 |
+| `iqp_combined` | 0.658 | 0.666 | +0.009 |
+| `amplitude_combined` | 0.587 | 0.671 | +0.084 |
+| `angle_combined` | 0.539 | 0.573 | +0.034 |
+| `dense_angle_combined` | 0.431 | 0.480 | +0.049 |
+
+**What reproduced:** the qualitative story is stable — `data_reuploading` wins
+on both, *every* upstream encoding degrades AUC, all effect sizes are "large",
+and `dense_angle_combined` is the worst (or tied-worst), sitting at/below 0.5.
+
+**What did NOT reproduce:** the per-fold AUCs differ entirely, and the single
+Holm-significant encoding **flips** — `amplitude_combined` (p_adj 0.032) on PC1
+vs `dense_angle_combined` (p_adj 0.019) on PC2. This is a concrete demonstration
+of problem #4/#5 above: at n = 5 the "significant" flag is fragile and tracks
+per-fold *consistency*, not a stable truth.
+
+**Root cause (now fixed).** The metadata `seed` only fixed *preprocessing*
+(numpy/sklearn split + SMOTE). Model weight init (`torch.randn`) and batch
+shuffling (`torch.randperm`) were **unseeded**, so init/training order — and the
+borderline statistics — drifted between machines and library versions.
+`compare_encodings.py` now calls `seed_everything(2026)` (seeds `random`,
+`numpy`, and `torch`) and passes a deterministic per-(fold, encoding)
+`init_seed` to `train_quantum_vqc`, making future runs reproducible. The two
+result sets above predate that fix; re-running both machines now should match.
+
 ## Circuit diagram (per layer l)
 
 ```
