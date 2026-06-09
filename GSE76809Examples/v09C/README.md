@@ -198,6 +198,58 @@ applying `AmplitudeEmbedding` at every layer is architecturally destructive
 (it re-prepares the statevector each layer), which is why `amplitude_combined`
 degrades the most.
 
+## Alternative architecture: layer-0-only encoding (v09B)
+
+v09C is the *every-layer* reading of "base encoding combined with reuploading".
+The natural sibling design — historically prototyped as **v09B** — instead
+applies the upstream base encoding at **layer 0 only** (one-shot state
+preparation), then runs the learned reuploading on layers 1–7:
+
+| | Upstream encoding applied | Layers 1–7 |
+|---|---|---|
+| **v09B** (layer-0-only) | layer 0 only — seeds the register once | learned reuploading refines |
+| **v09C** (this example) | **every layer**, interleaved | learned reuploading every layer |
+
+Both share an identical frozen architecture (4 qubits, 8 layers, 12-output
+measurement, `12 → 64 → 1` post-net, v06 preprocessing, 80 epochs / batch 24 /
+lr 0.005, seed 2026) and the same `data_reuploading` reference. The **only**
+difference is *where* the upstream gates fire.
+
+### Scenarios where v09B (layer-0-only) is expected to do better
+
+1. **`amplitude` — the clearest win.** `AmplitudeEmbedding` re-prepares the full
+   statevector from scratch. Applied at every layer (v09C) it **overwrites** the
+   accumulated computation each time, crippling the circuit — exactly why
+   `amplitude_combined` is the most Holm-damaged encoding here. As a one-shot
+   layer-0 state preparation (v09B) it is used as intended, so the reuploading
+   layers can build on it instead of being repeatedly erased. v09B should
+   recover most of the AUC lost by `amplitude_combined`.
+2. **Rotation encodings under mis-scaled inputs.** The fixed `RY(x·π)` /
+   `RZ(x·π)` / `RZ(x_i·x_j)` gates receive StandardScaler z-scores (≈ −3…3),
+   not [0,1]/[0,π] values (problem #3). At every layer (v09C) that wrap-around
+   angle error compounds 8×; injected once (v09B) it is a single perturbation
+   the learned reuploading can largely correct. v09B should suffer less from the
+   scaling bug for `angle`/`dense_angle`/`iqp`.
+3. **Encodings that add a fixed inductive bias once.** When the base map carries
+   a useful prior that reuploading cannot reconstruct, seeding it once and
+   letting trainable layers refine (v09B) avoids forcing the same fixed
+   transform on top of every learned step (v09C), which tends to dominate and
+   scramble the representation.
+
+### Scenarios where v09C (every-layer) is the more faithful choice
+
+- For rotation encodings with **properly bounded inputs**, re-injecting the data
+  every layer is the canonical Pérez-Salinas data-reuploading architecture and
+  the literal "applied in combination ... per-layer" reading — the design v09C
+  is built to test. If the scaling issue in problem #3 is fixed, v09C is the
+  theoretically motivated variant for those encodings.
+
+In short: v09B is expected to be strictly better for `amplitude` and more robust
+for the rotation encodings *as currently scaled*, while v09C is the intended
+architecture for rotation encodings once inputs are bounded. A direct head-to-head
+would require running the layer-0-only variant; it is not present in this
+workspace.
+
 ## Files
 
 | File | Purpose |
