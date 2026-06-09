@@ -34,6 +34,7 @@ map of these examples and what each one actually found.
 | v07 | Cross-dataset replication of v06 | Only GSE76809 completed; replication question still open |
 | v08 | Small-sample efficiency sweep | Negative result: no small-data quantum advantage |
 | v09 | Quantum encoding ablation | Data-reuploading is best; dense_angle (2 feat/qubit) is worst — re-uploading drives performance |
+| v09C | Per-layer encoding **combined with** reuploading | Every upstream encoding stacked at every layer *hurts*; pure reuploading wins (0.812 AUC); only amplitude's drop is Holm-significant |
 | v10A | Noisy simulation of v08 (small-data) | Sweeps depolarising noise x training-set size on `default.mixed` (pending run) |
 | v10B | Noisy simulation of v09 (encoding) | Sweeps depolarising noise x encoding on `default.mixed`; tests if re-uploading's edge survives noise (pending run) |
 
@@ -137,6 +138,25 @@ not help — it is the **re-uploading** that drives performance.
 **Takeaway:** data-reuploading is the key encoding driver of the quantum
 model's competitiveness. Even so, the best encoding still loses to tuned
 XGBoost.
+
+### v09C — Per-layer encoding combined with reuploading
+Takes the four upstream encodings (angle, dense_angle, amplitude, iqp) and
+applies them at **every** layer *on top of* the learned data-reuploading,
+versus pure reuploading as the reference. Mean 5-fold CV AUCs:
+**data_reuploading 0.812** > iqp 0.658 > amplitude 0.587 > angle 0.539 >
+dense_angle 0.431. **Every** combined encoding *reduces* AUC, and
+`dense_angle_combined` falls **below 0.5** (worse than random). After Holm
+correction only `amplitude_combined` is significant (p_adj = 0.032) — and,
+counter-intuitively, it has the *smallest* effect size: the NB/Holm test rewards
+the most *consistent* degradation, not the largest. Two caveats temper the
+result: (1) the fixed encodings receive StandardScaler **z-scores** rather than
+[0,1]-bounded inputs, so their `RY(x·π)`/`RZ` angles are mis-scaled (a fairer
+re-run would MinMax-scale first); and (2) the validation fold is used for both
+early-stopping and reporting, so AUCs are optimistically biased. **Takeaway:**
+on GSE76809, stacking a fixed encoding on top of reuploading never helps and
+often hurts — consistent with v09, where re-uploading alone drives performance.
+The headline v09B (layer-0-only) vs v09C (every-layer) delta is still pending
+(v09B not yet run).
 
 ---
 

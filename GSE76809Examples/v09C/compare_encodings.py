@@ -20,6 +20,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import random
 import sys
 import time
 from pathlib import Path
@@ -42,6 +44,29 @@ from quantum_encodings import UPSTREAM_GATES    # noqa: E402
 # Canonical order: reference first, then the four hybrid combinations
 DEFAULT_ENCODINGS = list(UPSTREAM_GATES.keys())
 REFERENCE_ENCODING = "data_reuploading"
+SEED = 2026
+
+
+def seed_everything(seed: int = SEED) -> None:
+    """Seed every RNG that affects the run so results are reproducible.
+
+    NOTE: the metadata "seed" alone only fixed preprocessing (numpy/sklearn).
+    Model weight init (torch.randn) and batch shuffling (torch.randperm) were
+    previously unseeded, which is why per-fold AUCs and the borderline Holm
+    significance flag differed between machines. Seeding torch + numpy + random
+    here, and passing a deterministic per-(fold, encoding) init_seed below,
+    makes the model init and training order reproducible too.
+    """
+    import torch
+
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    # Best-effort deterministic kernels; CPU default.qubit is already deterministic.
+    torch.use_deterministic_algorithms(True, warn_only=True)
 
 
 class NumpyEncoder(json.JSONEncoder):
@@ -68,6 +93,7 @@ def main() -> None:
         raise SystemExit(f"unknown encodings {bad}; known: {list(UPSTREAM_GATES)}")
 
     start_time = time.time()
+    seed_everything(SEED)
     data = preprocess()
 
     out_dir = _THIS / "results"
@@ -92,7 +118,13 @@ def main() -> None:
             if len(cv[enc]["aucs"]) > fold_idx:
                 print(f"  [resume] Skipping {enc} fold {fold_idx + 1}")
                 continue
-            res = train_quantum_vqc(fold_data=fold, encoding=enc)
+            # Deterministic per-(fold, encoding) init seed so model weight init
+            # and batch shuffling are reproducible across machines/resumes.
+            enc_idx = args.encodings.index(enc)
+            init_seed = SEED + 1000 * fold_idx + enc_idx
+            res = train_quantum_vqc(
+                fold_data=fold, encoding=enc, init_seed=init_seed
+            )
             cv[enc]["aucs"].append(res["auc_roc"])
             cv[enc]["accs"].append(res["accuracy"])
             cv[enc]["f1s"].append(res["f1_score"])
